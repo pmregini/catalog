@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>CinePulse v3.0</title>
+    <title>CinePulse v3.1</title>
     <link class="apple-touch-icon" href="https://fav.farm/🎬">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -85,7 +85,6 @@
         .settings-footer { margin-top: 2.5rem; text-align: center; padding-bottom: 2rem; display: flex; flex-direction: column; gap: 0.4rem; align-items: center; }
         .btn-settings-link { background: transparent; border: none; color: var(--label3); font-size: 0.75rem; text-decoration: underline; cursor: pointer; }
         
-        /* Ocultar input de directorio nativo */
         #directoryInput { display: none; }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
@@ -94,20 +93,17 @@
     <div class="container">
         <header>
             <div>
-                <h1>CinePulse <span class="version-badge">v3.0</span></h1>
+                <h1>CinePulse <span class="version-badge">v3.1</span></h1>
                 <div class="subtitle" style="font-size:0.78rem; color:var(--label2);">Catálogo estático puro en la nube con Web Scanner</div>
             </div>
             <div class="header-actions">
-                <!-- Botón de Scan que activa el input oculto de carpetas -->
                 <button class="btn-panel scan" id="btnScan" onclick="document.getElementById('directoryInput').click()">⚡ Scan Disco</button>
                 <button class="btn-panel" id="btnCloudSync" onclick="manualSync()">🔄 Sync</button>
             </div>
         </header>
 
-        <!-- Input oculto HTML5 para lectura estructural de carpetas enteras -->
         <input type="file" id="directoryInput" webkitdirectory directory multiple onchange="handleDirectorySelection(event)">
 
-        <!-- Selector de Perfil Compartido -->
         <div class="context-bar">
             <div class="user-selector" style="margin: 0 auto;">
                 <button class="user-btn active" id="btnUser1" onclick="switchUser('Mariano')">Mariano</button>
@@ -115,7 +111,6 @@
             </div>
         </div>
 
-        <!-- Segmented Control Ubicaciones de Disco -->
         <div class="context-bar">
             <button class="context-btn active" id="ctx_all" onclick="setFilterContext('all')">Raíz</button>
             <button class="context-btn" id="ctx_bere" onclick="setFilterContext('bere')">Bere</button>
@@ -123,7 +118,6 @@
             <button class="context-btn" id="ctx_series" onclick="setFilterContext('series')">Series</button>
         </div>
 
-        <!-- Panel de Filtros Inteligentes Avanzados -->
         <div class="filter-panel">
             <select id="filtGenre" onchange="render()"><option value="">Todos los Géneros</option></select>
             <select id="filtYear" onchange="render()"><option value="">Todos los Años</option></select>
@@ -135,12 +129,10 @@
             </select>
         </div>
 
-        <!-- Buscador Reactivo -->
         <div class="search-row">
             <input type="text" id="searchInput" class="search-input" placeholder="Buscar por título, directores, actores, release..." oninput="render()">
         </div>
 
-        <!-- Grilla de Contenido -->
         <div class="catalog-grid" id="catalogGrid"></div>
 
         <div class="settings-footer">
@@ -155,7 +147,6 @@
         let isSyncingLock = false;
         let isFreshInstall = !localStorage.getItem(`cinepulse_state_${currentUser}`);
 
-        // Catálogo de respaldo inicial (Hydration Seed)
         const DEFAULT_CATALOG = [
             { id: "v1", title: "Anniversary", year: "2025", rating: "7.2", category: "all", meta: "Drama, Mystery", plot: "Un drama familiar intenso disparado por un misterio de años.", poster: "", rawName: "Anniversary.2025.2160p.4K.WEB.x265" },
             { id: "v2", title: "Beast", year: "2026", rating: "6.8", category: "all", meta: "Action, Thriller", plot: "Supervivencia salvaje al límite en un entorno hostil.", poster: "", rawName: "Beast.2026.2160p.4K.WEB.x265" },
@@ -234,13 +225,12 @@
         }
 
         function cleanReleaseName(filename) {
-            let name = filename.replace(/\.[^/.]+$/, ""); // Quitar extensión
-            name = name.replace(/\.(2160p|1080p|4k|bluray|x264|x265|web|hdr|aac5\.1|10bit|webdl|h265|ita|eng|yts|brrip|hdrip|dvdrip|graces).*/ai, '');
+            let name = filename.replace(/\.[^/.]+$/, "");
+            name = name.replace(/\.(2160p|1080p|4k|bluray|x264|x265|web|hdr|aac5\.1|10bit|webdl|h265|ita|eng|yts|brrip|hdrip|dvdrip|graces).*/i, '');
             name = name.replace(/[._\-]/g, ' ').trim();
             return name;
         }
 
-        /* ⚡ WEB SCANNER ATÓMICO POR SELECCIÓN DE DIRECTORIO (PURE FRONTEND) */
         async function handleDirectorySelection(event) {
             const files = event.target.files;
             if(!files || files.length === 0) return;
@@ -259,29 +249,24 @@
                 const relativePath = file.webkitRelativePath || file.name;
                 const lowerPath = relativePath.toLowerCase();
 
-                // Filtrar solo extensiones de video válidas
                 const hasValidExt = validExtensions.some(ext => lowerPath.endsWith(ext));
                 if(!hasValidExt) continue;
 
-                // Extraer el nombre base sin extensión
                 const fileName = file.name;
                 const rawName = fileName.replace(/\.[^/.]+$/, "");
 
-                // Determinar categoría por estructura de carpetas fijas de tu disco
                 let category = 'all';
                 if(lowerPath.includes('/bere/')) category = 'bere';
                 else if(lowerPath.includes('/milo/')) category = 'milo';
                 else if(lowerPath.includes('/series/')) category = 'series';
 
-                // Si ya existe en la base, lo conservamos intacto (Preserve state)
                 if(currentMoviesMap[rawName]) {
                     const existingMovie = currentMoviesMap[rawName];
-                    existingMovie.category = category; // Asegurar re-enrutamiento por si se movió de carpeta
+                    existingMovie.category = category; 
                     detectedMovies.push(existingMovie);
                     continue;
                 }
 
-                // Es un archivo nuevo detectado en el disco: Procesar scraping inline
                 const cleanedTitle = cleanReleaseName(fileName);
                 const yearMatch = fileName.match(/\b(19|20)\d{2}\b/);
                 const year = yearMatch ? yearMatch[0] : "";
@@ -299,7 +284,6 @@
                     rawName: rawName
                 };
 
-                // Si hay internet y una key configurada, hacemos enriquecimiento en caliente
                 if(apiKey !== "tt77462") {
                     try {
                         const targetUrl = `https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(cleanedTitle)}${yearParam}&plot=full`;
@@ -307,7 +291,7 @@
                         const data = await res.json();
                         if(data && data.Response === "True") {
                             const rawActors = data.Actors ? data.Actors.split(',') : [];
-                            const actors = rawActors.slice(0,3).map(a => a.strip ? a.strip() : a.trim());
+                            const actors = rawActors.slice(0,3).map(a => a.trim());
                             movieEntry.title = data.Title || movieEntry.title;
                             movieEntry.year = data.Year || movieEntry.year;
                             movieEntry.rating = data.imdbRating !== "N/A" ? data.imdbRating : "0.0";
@@ -316,19 +300,18 @@
                             movieEntry.plot = data.Plot !== "N/A" ? data.Plot : movieEntry.plot;
                         }
                     } catch(err) {
-                        console.log("Error de red inline mitigado.");
+                        console.log("Fallo HTTP mitigado durante el web scraping.");
                     }
                 }
                 detectedMovies.push(movieEntry);
             }
 
-            // Aplicar el Sync Defensivo: Reemplazamos la base con lo que existe físicamente en el disco
             state.movies = detectedMovies;
             await save();
 
             btn.classList.remove('spinning');
             btn.textContent = "⚡ Scan Disco";
-            alert(`Esmerado: Disco analizado. ${detectedMovies.length} videos sincronizados.`);
+            alert(`Directorio procesado. ${detectedMovies.length} elementos indexados.`);
         }
 
         function populateTaxonomies() {
@@ -411,7 +394,7 @@
                     }
                 }
             } catch(e) { 
-                console.log("Modo total offline de vacaciones activo."); 
+                console.log("Modo offline de almacenamiento local activo."); 
             } finally { if(syncBtn) syncBtn.classList.remove('spinning'); }
         }
 
@@ -434,14 +417,14 @@
                     body: JSON.stringify({ files: filePayload })
                 });
             } catch(e) { 
-                console.log("Push amortiguado."); 
+                console.log("Push de datos interceptado."); 
             } finally { isSyncingLock = false; if(syncBtn) syncBtn.classList.remove('spinning'); }
         }
 
         async function manualSync() {
             await autoPullFromCloud(true);
             await autoPushToCloud(true);
-            alert("🔄 Catálogo sincronizado cross-dispositivo.");
+            alert("🔄 Sincronización estática completada.");
         }
 
         function render() {
@@ -467,7 +450,7 @@
             }
 
             if(filtered.length === 0) {
-                grid.innerHTML = '<div class="empty-state">No hay videos que coincidan con los filtros seleccionados en esta carpeta.</div>';
+                grid.innerHTML = '<div class="empty-state">No hay resultados de indexación para los criterios proporcionados.</div>';
                 return;
             }
 
