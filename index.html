@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>CinePulse v1.1</title>
+    <link class="apple-touch-icon" href="https://fav.farm/🎬">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        :root {
+            --bg: #000000;
+            --surface: #1c1c1e;
+            --surface2: #2c2c2e;
+            --surface3: #3a3a3c;
+            --separator: rgba(255,255,255,0.09);
+            --label: #ffffff;
+            --label2: #98989d;
+            --label3: #636366;
+            --accent: #ff9f0a;
+            --blue: #007aff;
+            --green: #30d158;
+            --red: #ff453a;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+        html { -webkit-font-smoothing: antialiased; background: var(--bg); }
+        body {
+            background: var(--bg);
+            color: var(--label);
+            padding: calc(env(safe-area-inset-top) + 0.6rem) 0.8rem calc(env(safe-area-inset-bottom) + 5.5rem) 0.8rem;
+            letter-spacing: -0.01em;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        
+        header { padding: 0.3rem 0.1rem 0.8rem 0.1rem; display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
+        h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; display: flex; align-items: center; gap: 0.4rem; }
+        .version-badge { font-size: 0.68rem; font-weight: 600; color: var(--label3); background: var(--surface2); padding: 0.1rem 0.35rem; border-radius: 5px; border: 1px solid var(--surface3); }
+        
+        .top-buttons { display: flex; gap: 0.4rem; }
+        .btn-cloud-sync { background: var(--surface2); border: 1px solid var(--surface3); color: white; width: 38px; height: 34px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+        .btn-cloud-sync.spinning { animation: spin 0.8s linear infinite; color: var(--accent); }
+
+        /* Segmented Control iOS */
+        .context-bar { display: flex; background: var(--surface); padding: 2px; border-radius: 10px; margin-bottom: 0.8rem; border: 1px solid var(--surface2); }
+        .context-btn { flex: 1; background: transparent; border: none; color: var(--label2); padding: 0.5rem; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; text-align: center; }
+        .context-btn.active { background: var(--surface3); color: var(--label); box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+
+        /* Form / Scraper Panel */
+        .form-card { background: var(--surface); border-radius: 14px; margin-bottom: 0.8rem; overflow: hidden; border: 1px solid var(--separator); }
+        .form-toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0.9rem; cursor: pointer; }
+        .form-toggle-row .label { font-weight: 700; font-size: 0.88rem; display: flex; align-items: center; gap: 0.4rem; }
+        .form-card.open .chevron { transform: rotate(180deg); }
+        .form-body { max-height: 0; overflow: hidden; transition: max-height 0.28s ease-out; }
+        .form-card.open .form-body { max-height: 1100px; }
+        .form-body-inner { padding: 0.1rem 0.9rem 0.9rem 0.9rem; display: flex; flex-direction: column; gap: 0.6rem; }
+        
+        .form-group { display: flex; flex-direction: column; gap: 0.25rem; }
+        .form-group label { font-size: 0.65rem; font-weight: 600; color: var(--label2); text-transform: uppercase; letter-spacing: 0.02em; }
+        .form-group input, .form-group select, .form-group textarea { background: var(--surface2); border: none; padding: 0.65rem 0.75rem; border-radius: 8px; color: var(--label); font-size: 0.88rem; outline: none; }
+        .row-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+        
+        .scraper-group { display: flex; gap: 0.4rem; }
+        .scraper-group input { flex: 1; }
+        .btn-scrap { background: var(--blue); color: white; border: none; padding: 0 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.82rem; cursor: pointer; }
+
+        .btn-add { background: var(--accent); color: black; border: none; padding: 0.75rem; border-radius: 10px; font-weight: 700; font-size: 0.9rem; margin-top: 0.2rem; cursor: pointer; }
+
+        /* Search & Stats Bar */
+        .search-row { display: flex; gap: 0.5rem; margin-bottom: 0.8rem; }
+        .search-input { flex: 1; background: var(--surface); border: 1px solid var(--surface2); padding: 0.6rem 0.8rem; border-radius: 10px; color: white; font-size: 0.88rem; outline: none; }
+        
+        /* Catalog Grid Layout */
+        .catalog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.8rem; }
+        @media (max-width: 480px) {
+            .catalog-grid { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+        }
+
+        .movie-card { background: var(--surface); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid var(--separator); position: relative; }
+        .poster-wrapper { width: 100%; aspect-ratio: 2/3; background: var(--surface2); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; color: var(--label3); font-size: 2.5rem; }
+        .poster-img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .rating-badge { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.75); padding: 0.2rem 0.4rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; color: var(--accent); border: 1px solid rgba(255,159,10,0.3); font-variant-numeric: tabular-nums; }
+        .folder-badge { position: absolute; top: 8px; left: 8px; background: rgba(0,122,255,0.85); padding: 0.2rem 0.4rem; border-radius: 6px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; }
+
+        .movie-info { padding: 0.6rem; display: flex; flex-direction: column; gap: 0.25rem; flex: 1; }
+        .movie-title { font-size: 0.92rem; font-weight: 700; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.2rem; }
+        .movie-meta { font-size: 0.7rem; color: var(--label2); font-weight: 500; }
+        .movie-plot { font-size: 0.74rem; color: var(--label2); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin-top: 0.15rem; flex: 1; }
+        
+        .card-actions { border-top: 1px solid var(--separator); padding: 0.4rem 0.6rem; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.01); }
+        .btn-action { background: transparent; border: none; color: var(--blue); font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+        .btn-action.del { color: var(--red); }
+
+        .empty-state { grid-column: 1/-1; text-align: center; color: var(--label3); padding: 3rem 1rem; font-size: 0.88rem; }
+        .settings-footer { margin-top: 2.5rem; text-align: center; padding-bottom: 1.5rem; }
+        .btn-settings-link { background: transparent; border: none; color: var(--label3); font-size: 0.75rem; text-decoration: underline; cursor: pointer; }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>CinePulse <span class="version-badge">v1.1</span></h1>
+                <div class="subtitle" style="font-size:0.78rem; color:var(--label2);">Catálogo local offline con motor de consulta OMDb API</div>
+            </div>
+            <div class="top-buttons">
+                <button class="btn-cloud-sync" id="btnCloudSync" onclick="manualSync()" title="Sincronizar con GitHub">🔄</button>
+            </div>
+        </header>
+
+        <!-- Segmented Control Ubicaciones -->
+        <div class="context-bar">
+            <button class="context-btn active" id="ctx_all" onclick="setFilterContext('all')">Raíz</button>
+            <button class="context-btn" id="ctx_bere" onclick="setFilterContext('bere')">Bere</button>
+            <button class="context-btn" id="ctx_milo" onclick="setFilterContext('milo')">Milo</button>
+            <button class="context-btn" id="ctx_series" onclick="setFilterContext('series')">Series</button>
+        </div>
+
+        <!-- Formulario Scraper e Inserción -->
+        <div class="form-card" id="formCard">
+            <div class="form-toggle-row" onclick="toggleForm()">
+                <span class="label">🎬 Importador / OMDb API Scraper</span>
+                <span class="chevron" style="font-size:0.7rem; color:var(--label3); transition: transform 0.2s;">▼</span>
+            </div>
+            <div class="form-body">
+                <div class="form-body-inner">
+                    <div class="form-group">
+                        <label>Nombre del archivo o Carpeta cruda</label>
+                        <div class="scraper-group">
+                            <input type="text" id="fRawName" placeholder="Ej: Anniversary.2025.2160p.4K.WEB.x265.mkv">
+                            <button class="btn-scrap" id="btnScrap" onclick="runOMDbScraper()">Consultar OMDb</button>
+                        </div>
+                    </div>
+                    <div class="row-inputs">
+                        <div class="form-group">
+                            <label>Título Limpio</label>
+                            <input type="text" id="fTitle" placeholder="Ej: Anniversary">
+                        </div>
+                        <div class="form-group">
+                            <label>Ubicación / Carpeta en Disco</label>
+                            <select id="fCategory">
+                                <option value="all">Raíz Películas</option>
+                                <option value="bere">Fólder Bere</option>
+                                <option value="milo">Fólder Milo</option>
+                                <option value="series">Fólder Series</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row-inputs">
+                        <div class="form-group">
+                            <label>Año</label>
+                            <input type="text" id="fYear" placeholder="Ej: 2025">
+                        </div>
+                        <div class="form-group">
+                            <label>Puntuación / IMDb Rating</label>
+                            <input type="text" id="fRating" placeholder="Ej: 7.8">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Géneros / Actores</label>
+                        <input type="text" id="fMeta" placeholder="Ej: Drama, Thriller · Aaron Taylor-Johnson">
+                    </div>
+                    <div class="form-group">
+                        <label>URL del Póster (Imagen)</label>
+                        <input type="url" id="fPoster" placeholder="https://m.media-amazon.com/images/M/...">
+                    </div>
+                    <div class="form-group">
+                        <label>Plot / Sinopsis Completa</label>
+                        <textarea id="fPlot" rows="3" placeholder="Trama de la película..."></textarea>
+                    </div>
+                    <button class="btn-add" id="btnAddMovie" onclick="addMovie()">Insertar al Catálogo</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Buscador -->
+        <div class="search-row">
+            <input type="text" id="searchInput" class="search-input" placeholder="Buscar por título, género o actores..." oninput="render()">
+        </div>
+
+        <!-- Grilla de Películas -->
+        <div class="catalog-grid" id="catalogGrid"></div>
+
+        <div class="settings-footer">
+            <button class="btn-settings-link" onclick="setupOMDbKey()">⚙️ Configurar OMDb API Key / Credentials</button>
+        </div>
+    </div>
+
+    <script>
+        let currentContext = 'all';
+        let isSyncingLock = false;
+        let isFreshInstall = !localStorage.getItem('cinepulse_state_v1');
+
+        /* 💾 SEED INICIAL ESTRUCTURADO CON LOS RELEASES REALES DE TU DISCO */
+        const DEFAULT_CATALOG = [
+            { id: "v1", title: "Anniversary", year: "2025", rating: "7.2", category: "all", meta: "Drama, Suspenso", plot: "Un drama familiar intenso disparado por un misterio de años.", poster: "", rawName: "Anniversary.2025.2160p.4K.WEB.x265" },
+            { id: "v2", title: "Beast", year: "2026", rating: "6.8", category: "all", meta: "Action, Thriller", plot: "Supervivencia salvaje al límite en un entorno hostil.", poster: "", rawName: "Beast.2026.2160p.4K.WEB.x265" },
+            { id: "v3", title: "Bone Lake", year: "2024", rating: "6.1", category: "bere", meta: "Horror, Mystery", plot: "Una pareja alquila una cabaña aislada que esconde un pasado macabro.", poster: "", rawName: "Bone.Lake.2024.2160p.4K.WEB.x265" },
+            { id: "v4", title: "The Mummy", year: "2026", rating: "7.5", category: "series", meta: "Action, Adventure, Fantasy", plot: "Reboot completo de la mítica saga de terror arqueológico.", poster: "", rawName: "The.Mummy.2026.2160p.4K.WEB.x265" },
+            { id: "v5", title: "Night Always Comes", year: "2025", rating: "8.0", category: "milo", meta: "Drama", plot: "Una mujer intenta conseguir dinero a contrarreloj en las noches de Portland.", poster: "", rawName: "Night.Always.Comes.2025.2160p.4K.WEB.x265" }
+        ];
+
+        let state = JSON.parse(localStorage.getItem('cinepulse_state_v1')) || {
+            updatedAt: 1,
+            movies: DEFAULT_CATALOG
+        };
+        if (!state.updatedAt) state.updatedAt = 1;
+
+        function getSyncCredentials() {
+            let token = localStorage.getItem('wishlist_gh_token');
+            let gistId = localStorage.getItem('wishlist_gh_gist');
+            if (!gistId || gistId.trim() === '') {
+                gistId = '206145949f30bf9663b1f7ba2ed4573a';
+                localStorage.setItem('wishlist_gh_gist', gistId);
+            }
+            return { token, gistId };
+        }
+
+        function getOMDbKey() {
+            let key = localStorage.getItem('cinepulse_omdb_key');
+            if(!key || key.trim() === '') {
+                // Key demostración por defecto si no configuró una propia todavía
+                key = "tt77462"; 
+            }
+            return key;
+        }
+
+        function setupOMDbKey() {
+            const currentKey = localStorage.getItem('cinepulse_omdb_key') || "";
+            const newKey = prompt("Pegá tu API Key de OMDb aquí:", currentKey);
+            if(newKey !== null) {
+                localStorage.setItem('cinepulse_omdb_key', newKey.trim());
+                alert("Clave de OMDb guardada con éxito.");
+            }
+        }
+
+        async function save() {
+            state.updatedAt = Date.now();
+            localStorage.setItem('cinepulse_state_v1', JSON.stringify(state));
+            render();
+            await autoPushToCloud();
+        }
+
+        function setFilterContext(ctx) {
+            currentContext = ctx;
+            document.querySelectorAll('.context-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`ctx_${ctx}`).classList.add('active');
+            render();
+        }
+
+        function toggleForm() {
+            document.getElementById('formCard').classList.toggle('open');
+        }
+
+        /* 🧹 FILTRO LIMPIADOR DE RELEASES DE SCENE (REGEX ATÓMICO) */
+        function cleanReleaseName(raw) {
+            let name = raw.replace(/\.(2160p|1080p|4k|bluray|x264|x265|web|hdr|aac5\.1|10bit|webdl|h265|ita|eng|yts|brrip|hdrip|dvdrip|graces).*/ai, '');
+            name = name.replace(/[._\-]/g, ' ').trim();
+            return name;
+        }
+
+        /* 🚀 SCRAPER ESTRUCTURADO ASÍNCRONO DIRECTO CONTRA LA API DE OMDB */
+        async function runOMDbScraper() {
+            const raw = document.getElementById('fRawName').value.trim();
+            if(!raw) return;
+
+            const btn = document.getElementById('btnScrap');
+            btn.disabled = true;
+            btn.textContent = "...";
+
+            const cleanedTitle = cleanReleaseName(raw);
+            document.getElementById('fTitle').value = cleanedTitle;
+
+            // Enrutamiento predictivo de fólders según el archivo
+            if(raw.toLowerCase().includes('milo')) document.getElementById('fCategory').value = 'milo';
+            else if(raw.toLowerCase().includes('bere')) document.getElementById('fCategory').value = 'bere';
+            else if(raw.toLowerCase().includes('series')) document.getElementById('fCategory').value = 'series';
+
+            const yearMatch = raw.match(/\b(19|20)\d{2}\b/);
+            let yearParam = yearMatch ? `&y=${yearMatch[0]}` : '';
+            if(yearMatch) document.getElementById('fYear').value = yearMatch[0];
+
+            const apiKey = getOMDbKey();
+
+            try {
+                // Llamada directa HTTP GET estructurada
+                const targetUrl = `https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(cleanedTitle)}${yearParam}&plot=full`;
+                const res = await fetch(targetUrl);
+                const data = await res.json();
+
+                if(data && data.Response === "True") {
+                    if(data.Title) document.getElementById('fTitle').value = data.Title;
+                    if(data.Year) document.getElementById('fYear').value = data.Year;
+                    if(data.imdbRating && data.imdbRating !== "N/A") document.getElementById('fRating').value = data.imdbRating;
+                    if(data.Genre && data.Actors) {
+                        document.getElementById('fMeta').value = `${data.Genre} · ${data.Actors.split(',').slice(0,3).join(',')}`;
+                    }
+                    if(data.Poster && data.Poster !== "N/A") document.getElementById('fPoster').value = data.Poster;
+                    if(data.Plot && data.Plot !== "N/A") document.getElementById('fPlot').value = data.Plot;
+                } else {
+                    console.log("No encontrado en OMDb, se puede rellenar offline.");
+                }
+            } catch(e) {
+                console.error("Fallo de red o API key inválida. Fallback offline habilitado.");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Consultando OMDb";
+            }
+        }
+
+        async function addMovie() {
+            const title = document.getElementById('fTitle').value.trim();
+            const category = document.getElementById('fCategory').value;
+            const year = document.getElementById('fYear').value.trim() || "N/A";
+            const rating = document.getElementById('fRating').value.trim() || "0.0";
+            const meta = document.getElementById('fMeta').value.trim() || "Varios";
+            const poster = document.getElementById('fPoster').value.trim();
+            const plot = document.getElementById('fPlot').value.trim() || "Sin sinopsis cargada.";
+            const rawName = document.getElementById('fRawName').value.trim();
+
+            if(!title) { alert("Falta ingresar el título limpio."); return; }
+
+            state.movies.unshift({ id: 'v_' + Date.now(), title, category, year, rating, meta, poster, plot, rawName });
+            
+            // Reset formulario
+            document.getElementById('fTitle').value = '';
+            document.getElementById('fYear').value = '';
+            document.getElementById('fRating').value = '';
+            document.getElementById('fMeta').value = '';
+            document.getElementById('fPoster').value = '';
+            document.getElementById('fPlot').value = '';
+            document.getElementById('fRawName').value = '';
+
+            toggleForm();
+            await save();
+        }
+
+        async function deleteMovie(id) {
+            if(confirm("¿Remover esta película del catálogo permanente?")) {
+                state.movies = state.movies.filter(m => m.id !== id);
+                await save();
+            }
+        }
+
+        async function editMovieInline(id) {
+            const m = state.movies.find(m => m.id === id);
+            if(!m) return;
+            const newTitle = prompt("Modificar Título:", m.title);
+            const newRating = prompt("Modificar Puntuación:", m.rating);
+            const newPlot = prompt("Modificar Sinopsis / Ubicación física:", m.plot);
+            if(newTitle !== null && newRating !== null && newPlot !== null) {
+                m.title = newTitle.trim() || m.title;
+                m.rating = newRating.trim() || m.rating;
+                m.plot = newPlot.trim() || m.plot;
+                await save();
+            }
+        }
+
+        async function autoPullFromCloud(isForcedManual = false) {
+            if(isSyncingLock && !isForcedManual) return;
+            const creds = getSyncCredentials();
+            if(!creds.token || !creds.gistId) return;
+            const syncBtn = document.getElementById('btnCloudSync');
+            if(syncBtn) syncBtn.classList.add('spinning');
+            try {
+                const res = await fetch(`https://api.github.com/gists/${creds.gistId}?_cb=${Date.now()}`, {
+                    headers: { 'Authorization': `token ${creds.token}` }
+                });
+                if(res.ok) {
+                    const gistData = await res.json();
+                    if(gistData.files && gistData.files["movie_catalog.json"]) {
+                        const cloudContent = JSON.parse(gistData.files["movie_catalog.json"].content);
+                        const cloudUpdatedAt = cloudContent.updatedAt || 0;
+                        
+                        if(cloudUpdatedAt > state.updatedAt || isForcedManual || (isFreshInstall && cloudContent.movies)) {
+                            state = cloudContent;
+                            localStorage.setItem('cinepulse_state_v1', JSON.stringify(state));
+                            isFreshInstall = false;
+                            render();
+                        } else if(state.updatedAt > cloudUpdatedAt) {
+                            await autoPushToCloud(true);
+                        }
+                    }
+                }
+            } catch(e) { 
+                console.log("Modo Offline de Vacaciones: Consumiendo LocalStorage blindado."); 
+            } finally { if(syncBtn) syncBtn.classList.remove('spinning'); }
+        }
+
+        async function autoPushToCloud(bypassLock = false) {
+            if(isSyncingLock && !bypassLock) return;
+            const creds = getSyncCredentials();
+            if(!creds.token || !creds.gistId) return;
+            isSyncingLock = true;
+            const syncBtn = document.getElementById('btnCloudSync');
+            if(syncBtn) syncBtn.classList.add('spinning');
+            try {
+                await fetch(`https://api.github.com/gists/${creds.gistId}`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `token ${creds.token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        files: { "movie_catalog.json": { content: JSON.stringify(state, null, 2) } }
+                    })
+                });
+            } catch(e) { 
+                console.log("Fallo de push mitigado.");
+            } finally { isSyncingLock = false; if(syncBtn) syncBtn.classList.remove('spinning'); }
+        }
+
+        async function manualSync() {
+            await autoPullFromCloud(true);
+            await autoPushToCloud(true);
+            alert("🔄 Catálogo sincronizado con éxito.");
+        }
+
+        function render() {
+            const grid = document.getElementById('catalogGrid');
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            grid.innerHTML = '';
+
+            let filtered = state.movies.filter(m => m.category === currentContext);
+
+            if(search) {
+                filtered = filtered.filter(m => 
+                    m.title.toLowerCase().includes(search) || 
+                    m.meta.toLowerCase().includes(search) || 
+                    (m.rawName && m.rawName.toLowerCase().includes(search))
+                );
+            }
+
+            if(filtered.length === 0) {
+                grid.innerHTML = `<div class="empty-state">No hay películas registradas en esta sección del disco.</div>`;
+                return;
+            }
+
+            filtered.forEach(m => {
+                const card = document.createElement('div');
+                card.className = 'movie-card';
+                
+                // Fallback elegante en CSS si no hay póster disponible offline
+                const posterStyle = m.poster ? '' : 'style="display:flex;align-items:center;justify-content:center;background:#2c2c2e;height:100%;font-size:2.5rem;"';
+                const posterHtml = m.poster 
+                    ? `<img src="${m.poster}" class="poster-img" alt="Poster" onerror="this.style.display='none'; this.parentElement.innerHTML='🎬';">`
+                    : `🎬`;
+
+                card.innerHTML = `
+                    <div class="poster-wrapper" ${m.poster ? '' : posterStyle}>
+                        ${posterHtml}
+                        ${m.rating && m.rating !== "0.0" ? `<div class="rating-badge">⭐ ${m.rating}</div>` : ''}
+                        <div class="folder-badge">${m.category}</div>
+                    </div>
+                    <div class="movie-info">
+                        <div class="movie-title">${m.title}</div>
+                        <div class="movie-meta">${m.year} · ${m.meta}</div>
+                        <div class="movie-plot">${m.plot}</div>
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn-action" onclick="editMovieInline('${m.id}')">Editar</button>
+                        <button class="btn-action del" onclick="deleteMovie('${m.id}')">Borrar</button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        window.onload = function() {
+            render();
+            setTimeout(() => {
+                autoPullFromCloud();
+            }, 150);
+        };
+
+        document.addEventListener("visibilitychange", async () => {
+            if (!document.hidden) {
+                await autoPullFromCloud();
+            }
+        });
+    </script>
+</body>
+</html>
