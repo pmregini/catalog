@@ -16,36 +16,43 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; -webkit-tap-highlight-color: transparent;}
         body { background: var(--bg); color: var(--label); padding: calc(env(safe-area-inset-top) + 0.6rem) 0.8rem 6rem 0.8rem; }
         .container { max-width: 800px; margin: 0 auto; }
-        header { padding: 0.4rem 0.1rem; display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+        header { padding: 0.4rem 0.1rem; display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
         h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
         
         .header-actions { display: flex; gap: 0.5rem; }
         .btn-panel { background: var(--surface2); border: 1px solid var(--surface3); color: white; padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.82rem; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; }
         .btn-panel.spinning { animation: spin 1s linear infinite; opacity: 0.6; pointer-events: none; }
 
-        .filter-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; margin-bottom: 0.8rem; }
-        .filter-panel select { background: var(--surface); border: 1px solid var(--surface2); padding: 0.6rem; border-radius: 8px; color: white; font-size: 0.8rem; outline: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2398989d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 6l4 4 4-4'/></svg>"); background-repeat: no-repeat; background-position: right 8px center; padding-right: 24px;}
+        .filter-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.4rem; margin-bottom: 0.6rem; }
+        .filter-panel select { background: var(--surface); border: 1px solid var(--surface2); padding: 0.55rem; border-radius: 8px; color: white; font-size: 0.78rem; outline: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2398989d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 6l4 4 4-4'/></svg>"); background-repeat: no-repeat; background-position: right 8px center; padding-right: 24px;}
 
-        .search-input { width: 100%; background: var(--surface); border: 1px solid var(--surface2); padding: 0.6rem; border-radius: 10px; color: white; font-size: 0.88rem; outline: none; margin-bottom: 0.8rem; }
-
+        .search-row { display: flex; gap: 0.4rem; margin-bottom: 0.8rem; }
+        .search-input { flex: 1; background: var(--surface); border: 1px solid var(--surface2); padding: 0.6rem; border-radius: 8px; color: white; font-size: 0.88rem; outline: none; }
+        
         .catalog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.8rem; }
         @media (max-width: 480px) { .catalog-grid { grid-template-columns: 1fr 1fr; gap: 0.5rem; } }
 
         .movie-card { background: var(--surface); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid var(--separator); position: relative; }
-        .poster-wrapper { width: 100%; aspect-ratio: 2/3; background: var(--surface2); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-        .poster-img { width: 100%; height: 100%; object-fit: cover; }
+        .movie-card.is-watched .poster-img { opacity: 0.35; filter: grayscale(80%); }
+        .movie-card.is-watched .movie-title { color: var(--label2); }
+
+        .poster-wrapper { width: 100%; aspect-ratio: 2/3; background: var(--surface2); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .poster-img { width: 100%; height: 100%; object-fit: cover; transition: all 0.3s ease; }
         
         .rating-badge { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.8); padding: 0.2rem 0.4rem; border-radius: 6px; font-size: 0.72rem; font-weight: 700; color: var(--accent); }
         .folder-badge { position: absolute; top: 6px; left: 6px; background: rgba(0,122,255,0.85); padding: 0.2rem 0.4rem; border-radius: 6px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; }
+        .watched-badge { position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); background: rgba(48,209,88,0.9); padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.7rem; font-weight: 800; color: #000; letter-spacing: 0.02em; }
 
         .movie-info { padding: 0.5rem; display: flex; flex-direction: column; gap: 0.2rem; flex: 1; }
         .movie-title { font-size: 0.88rem; font-weight: 700; line-height: 1.2; min-height: 2.2rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .movie-meta { font-size: 0.68rem; color: var(--label2); }
         .movie-plot { font-size: 0.72rem; color: var(--label2); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin-top: 0.1rem; flex: 1; }
         
-        .card-actions { border-top: 1px solid var(--separator); padding: 0.4rem; display: flex; justify-content: space-between; background: rgba(255,255,255,0.01); }
-        .btn-card { background: transparent; border: none; color: var(--blue); font-size: 0.72rem; font-weight: 600; cursor: pointer; }
-        .btn-card.del { color: var(--red); }
+        .card-actions { border-top: 1px solid var(--separator); padding: 0.4rem; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.3rem; background: rgba(255,255,255,0.01); }
+        .btn-card { flex: 1; background: var(--surface2); border: none; color: var(--label); font-size: 0.7rem; font-weight: 600; cursor: pointer; padding: 0.35rem 0.2rem; border-radius: 6px; }
+        .btn-card.del { color: var(--red); flex: 0.4; }
+        .btn-card.action { color: var(--blue); }
+        .btn-card.success { color: var(--green); }
         
         .empty-state { grid-column: 1/-1; text-align: center; color: var(--label3); padding: 4rem 1rem; font-size: 0.88rem; }
         
@@ -86,14 +93,13 @@
         <header>
             <div>
                 <h1>CinePulse</h1>
-                <div style="font-size:0.75rem; color:var(--label2);">Catálogo Manual (100% Cloud)</div>
+                <div style="font-size:0.75rem; color:var(--label2);">Catálogo Manual Cloud</div>
             </div>
             <div class="header-actions">
                 <button class="btn-panel" id="btnCloudSync" onclick="manualSync()">🔄 Sincronizar</button>
             </div>
         </header>
 
-        <!-- Acordeón para Añadir Película Manualmente -->
         <div class="form-card" id="formCard">
             <div class="form-toggle-row" onclick="toggleForm()">
                 <span class="label">➕ Añadir Medio al Catálogo</span>
@@ -101,7 +107,6 @@
             </div>
             <div class="form-body">
                 <div class="form-body-inner">
-                    <!-- Buscador OMDb Híbrido -->
                     <div class="form-group" style="background: rgba(0,122,255,0.1); padding: 0.6rem; border-radius: 10px; border: 1px solid rgba(0,122,255,0.3);">
                         <label style="color: var(--blue);">1. Buscar título o pegar Link/ID de IMDb</label>
                         <div class="scraper-group">
@@ -111,10 +116,9 @@
                         <div class="omdb-results-box" id="omdbResults"></div>
                     </div>
 
-                    <!-- Campos Manuales -->
                     <div class="row-inputs">
                         <div class="form-group">
-                            <label>Ubicación FíSica (Disco)</label>
+                            <label>Ubicación Física</label>
                             <select id="fCategory">
                                 <option value="all">Raíz</option>
                                 <option value="bere">Bere</option>
@@ -134,6 +138,7 @@
                     <div class="row-inputs">
                         <div class="form-group">
                             <label>Título Limpio</label>
+                            <input type="hidden" id="fImdbID">
                             <input type="text" id="fTitle" placeholder="Ej: Inception">
                         </div>
                         <div class="form-group">
@@ -158,7 +163,7 @@
                         <input type="text" id="fPoster" placeholder="https://...">
                     </div>
                     <div class="form-group">
-                        <label>Sinopsis Completa</label>
+                        <label>Sinopsis</label>
                         <textarea id="fPlot" rows="3" placeholder="Trama..."></textarea>
                     </div>
 
@@ -167,30 +172,38 @@
             </div>
         </div>
 
-        <!-- Filtros -->
+        <!-- Panel de Filtros & Ordenamiento -->
+        <div class="search-row">
+            <input type="text" id="searchInput" class="search-input" style="margin-bottom:0;" placeholder="Buscar en tu catálogo..." oninput="render()">
+            <select id="sortSelect" onchange="render()" style="background: var(--surface); border: 1px solid var(--surface2); padding: 0.6rem; border-radius: 8px; color: white; font-size: 0.8rem; outline: none; -webkit-appearance: none; width: 140px;">
+                <option value="newest">Recientes</option>
+                <option value="year_desc">Año (Nuevo a Viejo)</option>
+                <option value="year_asc">Año (Viejo a Nuevo)</option>
+                <option value="title_az">Título (A-Z)</option>
+                <option value="rating_desc">Rating (Mayor a Menor)</option>
+            </select>
+        </div>
+
         <div class="filter-panel">
+            <select id="filtWatched" onchange="render()">
+                <option value="">Todas (Vistas/No Vistas)</option>
+                <option value="false">👀 No Vistas</option>
+                <option value="true">✅ Vistas</option>
+            </select>
             <select id="filtLocation" onchange="render()">
-                <option value="">Todas las Ubicaciones</option>
+                <option value="">Cualquier Disco</option>
                 <option value="all">Raíz</option>
                 <option value="bere">Bere</option>
                 <option value="milo">Milo</option>
                 <option value="series">Series</option>
             </select>
             <select id="filtType" onchange="render()">
-                <option value="">Todos los Tipos</option>
+                <option value="">Cualquier Tipo</option>
                 <option value="Película">Películas</option>
                 <option value="Serie">Series</option>
             </select>
-            <select id="filtGenre" onchange="render()"><option value="">Todos los Géneros</option></select>
-            <select id="filtYear" onchange="render()"><option value="">Todos los Años</option></select>
-            <select id="filtRating" onchange="render()">
-                <option value="">Cualquier Rating</option>
-                <option value="7">⭐ Mayor a 7.0</option>
-                <option value="8">⭐ Mayor a 8.0</option>
-            </select>
+            <select id="filtGenre" onchange="render()"><option value="">Género</option></select>
         </div>
-
-        <input type="text" id="searchInput" class="search-input" placeholder="Buscar en tu catálogo..." oninput="render()">
 
         <div class="catalog-grid" id="catalogGrid"></div>
 
@@ -212,9 +225,7 @@
             document.getElementById('formCard').classList.toggle('open');
         }
 
-        function getOMDbKey() {
-            return state.omdbKey || "";
-        }
+        function getOMDbKey() { return state.omdbKey || ""; }
 
         function setupOMDbKey() {
             const n = prompt("Ingresá tu API Key de OMDb:", state.omdbKey);
@@ -250,7 +261,7 @@
         }
 
         // ==========================================
-        // LÓGICA DE BÚSQUEDA Y AGREGADO MANUAL (Blindada)
+        // OMDB SCRAPER (BLINDADO)
         // ==========================================
         async function searchOMDb() {
             const query = document.getElementById('omdbSearchInput').value.trim();
@@ -266,7 +277,6 @@
             btnSearch.disabled = true;
 
             try {
-                // 1. Intercepción directa por Link o ID de IMDb (tt seguido de 7 a 10 números)
                 const imdbMatch = query.match(/tt\d{7,10}/);
                 
                 if (imdbMatch) {
@@ -286,10 +296,9 @@
                             </div>
                         </div>`;
                     } else {
-                        resDiv.innerHTML = `<div style="color:var(--red); font-size:0.8rem; text-align:center; padding:0.5rem;">🚨 Enlace o ID de IMDb inválido o no encontrado.</div>`;
+                        resDiv.innerHTML = `<div style="color:var(--red); font-size:0.8rem; text-align:center; padding:0.5rem;">🚨 Enlace o ID de IMDb inválido.</div>`;
                     }
                 } else {
-                    // 2. Búsqueda semántica inteligente (separando título y año)
                     let searchUrl = `https://www.omdbapi.com/?apikey=${apiKey}&s=${encodeURIComponent(query)}`;
                     const yearMatch = query.match(/\b(19|20)\d{2}\b/);
                     
@@ -316,13 +325,9 @@
                         }).join('');
                     } else {
                         let errorMsg = data.Error || "Error desconocido";
-                        if (errorMsg === "Too many results.") {
-                            errorMsg = "Demasiados resultados. Agregá el año o pegá directamente el link de IMDb en la barra.";
-                        } else if (errorMsg === "Movie not found!") {
-                            errorMsg = `No se encontraron coincidencias para la búsqueda.`;
-                        } else if (errorMsg === "Invalid API key!") {
-                            errorMsg = "La API Key de OMDb es inválida o expiró. Reconfigurala en el pie de página.";
-                        }
+                        if (errorMsg === "Too many results.") errorMsg = "Demasiados resultados. Agregá el año o pegá el link de IMDb.";
+                        else if (errorMsg === "Movie not found!") errorMsg = `No se encontraron coincidencias.`;
+                        else if (errorMsg === "Invalid API key!") errorMsg = "La API Key de OMDb es inválida.";
                         resDiv.innerHTML = `<div style="color:var(--red); font-size:0.8rem; text-align:center; padding:0.5rem;">🚨 ${errorMsg}</div>`;
                     }
                 }
@@ -342,6 +347,7 @@
                 const res = await fetch(`https://www.omdbapi.com/?apikey=${apiKey}&i=${imdbID}&plot=full`);
                 const data = await res.json();
                 if (data.Response === "True") {
+                    document.getElementById('fImdbID').value = imdbID || "";
                     document.getElementById('fTitle').value = data.Title || "";
                     document.getElementById('fYear').value = data.Year || "";
                     document.getElementById('fRating').value = data.imdbRating !== "N/A" ? data.imdbRating : "0.0";
@@ -350,13 +356,14 @@
                     const rawActors = data.Actors ? data.Actors.split(',') : [];
                     const actors = rawActors.slice(0,3).map(a => a.trim());
                     document.getElementById('fMeta').value = `${data.Genre || 'Varios'} · ${actors.join(', ')}`;
-
                     document.getElementById('fPoster').value = data.Poster !== "N/A" ? data.Poster : "";
                     document.getElementById('fPlot').value = data.Plot !== "N/A" ? data.Plot : "";
 
-                    // Seleccionar automáticamente "Series" si es una serie
                     if(data.Type === "series") {
                         document.getElementById('fCategory').value = "series";
+                        if(data.totalSeasons && data.totalSeasons !== "N/A") {
+                            window.tempSeriesTotalSeasons = data.totalSeasons;
+                        }
                     }
 
                     resDiv.style.display = "none";
@@ -369,49 +376,67 @@
 
         async function addManualMovie() {
             const title = document.getElementById('fTitle').value.trim();
-            if (!title) { alert("El Título es obligatorio para guardar."); return; }
+            if (!title) { alert("El Título es obligatorio."); return; }
 
             const category = document.getElementById('fCategory').value;
             const type = document.getElementById('fType').value;
-            const year = document.getElementById('fYear').value.trim() || "N/A";
-            const rating = document.getElementById('fRating').value.trim() || "0.0";
-            const meta = document.getElementById('fMeta').value.trim() || "Desconocido";
-            const poster = document.getElementById('fPoster').value.trim();
-            const plot = document.getElementById('fPlot').value.trim() || "Sin sinopsis cargada.";
+            
+            let seriesDefaultInfo = "";
+            if (type === "Serie" && window.tempSeriesTotalSeasons) {
+                seriesDefaultInfo = `${window.tempSeriesTotalSeasons} Temporadas (Info OMDb)`;
+                window.tempSeriesTotalSeasons = null;
+            }
 
             const newMovie = {
                 id: 'm_' + Date.now(),
+                imdbID: document.getElementById('fImdbID').value.trim(),
                 title: title,
-                year: year,
-                rating: rating,
+                year: document.getElementById('fYear').value.trim() || "N/A",
+                rating: document.getElementById('fRating').value.trim() || "0.0",
                 category: category,
                 type: type,
-                meta: meta,
-                poster: poster,
-                plot: plot,
+                meta: document.getElementById('fMeta').value.trim() || "Desconocido",
+                poster: document.getElementById('fPoster').value.trim(),
+                plot: document.getElementById('fPlot').value.trim() || "Sin sinopsis cargada.",
+                watched: false,
+                seriesInfo: seriesDefaultInfo,
                 rawName: title.toLowerCase().replace(/[^a-z0-9]/g, '_')
             };
 
             state.movies.unshift(newMovie);
             await save();
 
-            // Limpiar formulario completo
-            document.getElementById('fTitle').value = "";
-            document.getElementById('fYear').value = "";
-            document.getElementById('fRating').value = "";
-            document.getElementById('fMeta').value = "";
-            document.getElementById('fPoster').value = "";
-            document.getElementById('fPlot').value = "";
-            document.getElementById('omdbSearchInput').value = "";
-            document.getElementById('omdbResults').style.display = "none";
+            // Limpieza silenciosa
+            document.getElementById('fImdbID').value = "";
+            document.getElementById('fTitle').value = ""; document.getElementById('fYear').value = "";
+            document.getElementById('fRating').value = ""; document.getElementById('fMeta').value = "";
+            document.getElementById('fPoster').value = ""; document.getElementById('fPlot').value = "";
+            document.getElementById('omdbSearchInput').value = ""; document.getElementById('omdbResults').style.display = "none";
 
             toggleForm();
-            alert(`"${title}" guardada exitosamente en la ubicación: ${category.toUpperCase()}`);
         }
 
         // ==========================================
-        // EDICIÓN, BORRADO INDIVIDUAL Y WIPE GLOBAL
+        // ACCIONES DE TARJETA (VISTO, INFO, EDIT)
         // ==========================================
+        async function toggleWatched(id) {
+            const m = state.movies.find(m => m.id === id);
+            if(!m) return;
+            m.watched = !m.watched;
+            await save();
+        }
+
+        async function showSeriesDetails(id) {
+            const m = state.movies.find(m => m.id === id);
+            if(!m) return;
+            const currentInfo = m.seriesInfo || "No especificado";
+            const updated = prompt(`Info de Descargas para "${m.title}":\n\nAnotá qué temporadas/episodios tenés en tu disco:`, currentInfo);
+            if(updated !== null) {
+                m.seriesInfo = updated.trim();
+                await save();
+            }
+        }
+
         async function editMovieInline(id) {
             const m = state.movies.find(m => m.id === id);
             if(!m) return;
@@ -432,19 +457,16 @@
         }
 
         async function wipeCatalog() {
-            const confirm1 = confirm("⚠️ ATENCIÓN: Estás a punto de borrar TODO tu catálogo de películas y series.");
-            if (confirm1) {
-                const confirm2 = confirm("🚨 ¿ESTÁS ABSOLUTAMENTE SEGURO? Esta acción es irreversible y borrará el JSON de la nube también.");
-                if (confirm2) {
-                    state.movies = [];
-                    await save();
-                    alert("Catálogo reiniciado a cero exitosamente.");
-                }
+            if (confirm("⚠️ ATENCIÓN: Estás a punto de borrar TODO tu catálogo de películas y series.") && 
+                confirm("🚨 ¿ESTÁS ABSOLUTAMENTE SEGURO? Esta acción es irreversible.")) {
+                state.movies = [];
+                await save();
+                alert("Catálogo reiniciado a cero exitosamente.");
             }
         }
 
         // ==========================================
-        // CLOUD SYNC & RENDER
+        // SYNC Y RENDER
         // ==========================================
         let isSyncingLock = false;
         
@@ -511,12 +533,7 @@
 
         function populateTaxonomies() {
             const genres = new Set();
-            const years = new Set();
             state.movies.forEach(m => {
-                if(m.year && m.year !== "N/A") {
-                    const cleanY = m.year.split('–')[0].trim();
-                    if(cleanY) years.add(cleanY);
-                }
                 if(m.meta && m.meta !== "Desconocido") {
                     const genreChunk = m.meta.split('·')[0];
                     genreChunk.split(',').forEach(g => {
@@ -526,51 +543,60 @@
             });
 
             const gSel = document.getElementById('filtGenre');
-            const ySel = document.getElementById('filtYear');
             const prevG = gSel.value;
-            const prevY = ySel.value;
-
             gSel.innerHTML = '<option value="">Todos los Géneros</option>' + [...genres].sort().map(g => `<option value="${g}">${g}</option>`).join('');
-            ySel.innerHTML = '<option value="">Todos los Años</option>' + [...years].sort((a,b)=>b-a).map(y => `<option value="${y}">${y}</option>`).join('');
-
             if([...genres].includes(prevG)) gSel.value = prevG;
-            if([...years].includes(prevY)) ySel.value = prevY;
         }
 
         function render() {
             const grid = document.getElementById('catalogGrid');
             const search = document.getElementById('searchInput').value.toLowerCase();
+            const sortOp = document.getElementById('sortSelect').value;
+            
             const genre = document.getElementById('filtGenre').value;
-            const year = document.getElementById('filtYear').value;
-            const rating = document.getElementById('filtRating').value;
             const location = document.getElementById('filtLocation').value;
             const type = document.getElementById('filtType').value;
+            const watched = document.getElementById('filtWatched').value;
             
             grid.innerHTML = '';
-            let filtered = state.movies;
-
-            if(location) filtered = filtered.filter(m => m.category === location);
-            if(type) filtered = filtered.filter(m => m.type === type);
-            if(genre) filtered = filtered.filter(m => m.meta && m.meta.includes(genre));
-            if(year) filtered = filtered.filter(m => m.year && m.year.includes(year));
-            if(rating) filtered = filtered.filter(m => parseFloat(m.rating) >= parseFloat(rating));
             
-            if(search) {
-                filtered = filtered.filter(m => 
-                    m.title.toLowerCase().includes(search) || 
-                    m.meta.toLowerCase().includes(search)
-                );
+            // 1. Filtrado
+            let filtered = state.movies.filter(m => {
+                if(location && m.category !== location) return false;
+                if(type && m.type !== type) return false;
+                if(genre && (!m.meta || !m.meta.includes(genre))) return false;
+                if(watched !== "") {
+                    const isW = !!m.watched;
+                    if(String(isW) !== watched) return false;
+                }
+                if(search && !(m.title.toLowerCase().includes(search) || (m.meta && m.meta.toLowerCase().includes(search)))) return false;
+                return true;
+            });
+
+            // 2. Ordenamiento
+            if (sortOp === 'year_desc') {
+                filtered.sort((a,b) => parseInt(b.year) - parseInt(a.year));
+            } else if (sortOp === 'year_asc') {
+                filtered.sort((a,b) => parseInt(a.year) - parseInt(b.year));
+            } else if (sortOp === 'title_az') {
+                filtered.sort((a,b) => a.title.localeCompare(b.title));
+            } else if (sortOp === 'rating_desc') {
+                filtered.sort((a,b) => parseFloat(b.rating || 0) - parseFloat(a.rating || 0));
+            } else {
+                // 'newest' por defecto (descendente por ID de tiempo)
+                filtered.sort((a,b) => b.id.localeCompare(a.id));
             }
 
             if(filtered.length === 0) {
-                grid.innerHTML = '<div class="empty-state">No se encontraron títulos en tu catálogo. Añadí uno arriba.</div>';
+                grid.innerHTML = '<div class="empty-state">No se encontraron títulos.</div>';
                 return;
             }
 
             filtered.forEach(m => {
                 const card = document.createElement('div');
-                card.className = 'movie-card';
+                card.className = `movie-card ${m.watched ? 'is-watched' : ''}`;
                 
+                const imdbLink = m.imdbID ? `https://www.imdb.com/title/${m.imdbID}/` : `https://www.imdb.com/find/?q=${encodeURIComponent(m.title)}`;
                 const posterStyle = m.poster ? '' : 'style="display:flex;align-items:center;justify-content:center;background:#2c2c2e;height:100%;font-size:3rem;padding:2.5rem 0;"';
                 const posterHtml = m.poster 
                     ? `<img src="${m.poster}" class="poster-img" alt="Poster" onerror="this.style.display='none'; this.parentElement.innerHTML='🎬';">`
@@ -579,19 +605,27 @@
                 const locLabel = m.category === 'all' ? 'Raíz' : m.category;
                 const typeLabel = m.type || 'Película';
 
+                let seriesBadge = "";
+                if(m.type === "Serie" && m.seriesInfo) {
+                    seriesBadge = `<div style="font-size:0.65rem; color:var(--accent); font-weight:700; margin-top:0.2rem;">📺 ${m.seriesInfo}</div>`;
+                }
+
                 card.innerHTML = `
-                    <div class="poster-wrapper" ${posterStyle}>
+                    <div class="poster-wrapper" ${posterStyle} onclick="window.open('${imdbLink}', '_blank')" title="Abrir en IMDb">
                         ${posterHtml}
                         <div class="folder-badge">${locLabel} · ${typeLabel}</div>
                         ${m.rating && m.rating !== "0.0" ? `<div class="rating-badge">⭐ ${m.rating}</div>` : ''}
+                        ${m.watched ? '<div class="watched-badge">✅ VISTA</div>' : ''}
                     </div>
                     <div class="movie-info">
                         <div class="movie-title">${m.title}</div>
                         <div class="movie-meta">${m.year} · ${m.meta.split('·')[0]}</div>
+                        ${seriesBadge}
                         <div class="movie-plot">${m.plot}</div>
                     </div>
                     <div class="card-actions">
-                        <button class="btn-card" onclick="editMovieInline('${m.id}')">Editar</button>
+                        <button class="btn-card ${m.watched ? 'action' : ''}" onclick="toggleWatched('${m.id}')">${m.watched ? 'Marcar No Vista' : '✅ Marcar Visto'}</button>
+                        ${m.type === 'Serie' ? `<button class="btn-card success" onclick="showSeriesDetails('${m.id}')">Episodios</button>` : `<button class="btn-card" onclick="editMovieInline('${m.id}')">Editar</button>`}
                         <button class="btn-card del" onclick="deleteMovie('${m.id}')">Quitar</button>
                     </div>
                 `;
