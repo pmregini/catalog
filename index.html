@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>CinePulse v4.0</title>
+    <title>CinePulse</title>
     <link class="apple-touch-icon" href="https://fav.farm/🎬">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -16,7 +16,7 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; -webkit-tap-highlight-color: transparent;}
         body { background: var(--bg); color: var(--label); padding: calc(env(safe-area-inset-top) + 0.6rem) 0.8rem 6rem 0.8rem; }
         .container { max-width: 800px; margin: 0 auto; }
-        header { padding: 0.4rem 0.1rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        header { padding: 0.4rem 0.1rem; display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
         h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
         
         .header-actions { display: flex; gap: 0.5rem; }
@@ -283,10 +283,18 @@
                         </div>`;
                     }).join('');
                 } else {
-                    resDiv.innerHTML = `<div style="color:var(--red); font-size:0.8rem; text-align:center;">No se encontraron resultados para "${query}".</div>`;
+                    let errorMsg = data.Error || "Error desconocido";
+                    if (errorMsg === "Too many results.") {
+                        errorMsg = "Demasiados resultados. Por favor, sé más específico con el título.";
+                    } else if (errorMsg === "Movie not found!") {
+                        errorMsg = `No se encontraron coincidencias para "${query}".`;
+                    } else if (errorMsg === "Invalid API key!") {
+                        errorMsg = "La API Key de OMDb es inválida o expiró. Reconfigurala en el pie de página.";
+                    }
+                    resDiv.innerHTML = `<div style="color:var(--red); font-size:0.8rem; text-align:center; padding:0.5rem;">🚨 ${errorMsg}</div>`;
                 }
             } catch (e) {
-                resDiv.innerHTML = "<div style='color:var(--red); font-size:0.8rem; text-align:center;'>Error de red al consultar OMDb.</div>";
+                resDiv.innerHTML = "<div style='color:var(--red); font-size:0.8rem; text-align:center; padding:0.5rem;'>Error de red al consultar OMDb.</div>";
             } finally {
                 btnSearch.disabled = false;
             }
@@ -313,7 +321,6 @@
                     document.getElementById('fPoster').value = data.Poster !== "N/A" ? data.Poster : "";
                     document.getElementById('fPlot').value = data.Plot !== "N/A" ? data.Plot : "";
 
-                    // Seleccionar automáticamente "Series" si es una serie
                     if(data.Type === "series") {
                         document.getElementById('fCategory').value = "series";
                     }
@@ -354,7 +361,6 @@
             state.movies.unshift(newMovie);
             await save();
 
-            // Limpiar formulario completo
             document.getElementById('fTitle').value = "";
             document.getElementById('fYear').value = "";
             document.getElementById('fRating').value = "";
