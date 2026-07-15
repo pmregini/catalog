@@ -1,140 +1,4 @@
-import os
-import json
-import urllib.request
-import urllib.parse
-import re
-import time
-from http.server import HTTPServer, BaseHTTPRequestHandler
-
-# ==========================================
-# CONFIGURACIÓN INICIAL DEL ENTORNO DE DISCO
-# ==========================================
-MEDIA_DIR = os.path.dirname(os.path.abspath(__file__))
-STATE_FILE = os.path.join(MEDIA_DIR, "cinepulse_config.json")
-
-def load_local_state():
-    if os.path.exists(STATE_FILE):
-        try:
-            with open(STATE_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except:
-            pass
-    return {
-        "updatedAt": int(time.time() * 1000),
-        "omdbKey": "tt77462",
-        "movies": []
-    }
-
-def save_local_state(state):
-    state["updatedAt"] = int(time.time() * 1000)
-    with open(STATE_FILE, "w", encoding="utf-8") as f:
-        json.dump(state, f, indent=2, ensure_ascii=False)
-
-# ==========================================
-# MOTOR INTERNO DE SCRAPING & DEFENSA DE DISCO
-# ==========================================
-def clean_release_name(filename):
-    name, _ = os.path.splitext(filename)
-    name = re.sub(r'\.(2160p|1080p|4k|bluray|x264|x265|web|hdr|aac5\.1|10bit|webdl|h265|ita|eng|yts|brrip|hdrip|dvdrip|graces).*', '', name, flags=re.IGNORECASE)
-    name = name.replace('.', ' ').replace('_', ' ').replace('-', ' ').strip()
-    return name
-
-def fetch_omdb_metadata(title, year, api_key):
-    if not api_key or api_key == "tt77462":
-        return None
-    try:
-        year_param = f"&y={year}" if year else ""
-        url = f"https://www.omdbapi.com/?apikey={api_key}&t={urllib.parse.quote(title)}{year_param}&plot=full"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=5) as res:
-            data = json.loads(res.read().decode('utf-8'))
-            if data.get("Response") == "True":
-                return data
-    except Exception as e:
-        print(f"[-] Fallo OMDb API: {e}")
-    return None
-
-def scan_disk_directory():
-    state = load_local_state()
-    api_key = state.get("omdbKey", "tt77462")
-    current_movies = {m["rawName"]: m for m in state.get("movies", [])}
-    new_movies = []
-    
-    target_folders = {
-        "": "all",
-        "Bere": "bere",
-        "Milo": "milo",
-        "Series": "series"
-    }
-    
-    valid_extensions = ('.mkv', '.mp4', '.avi', '.mov')
-
-    for sub_dir, category in target_folders.items():
-        path = os.path.join(MEDIA_DIR, sub_dir) if sub_dir else MEDIA_DIR
-        if not os.path.exists(path):
-            continue
-            
-        for file in os.listdir(path):
-            if file.lower().endswith(valid_extensions):
-                raw_name, _ = os.path.splitext(file)
-                
-                if raw_name in current_movies:
-                    movie_data = current_movies[raw_name]
-                    movie_data["category"] = category
-                    if "type" not in movie_data:
-                        movie_data["type"] = "Serie" if category == "series" else "Película"
-                    new_movies.append(movie_data)
-                    continue
-                
-                cleaned_title = clean_release_name(file)
-                year_match = re.search(r'\b(19|20)\d{2}\b', file)
-                year = year_match.group(0) if year_match else ""
-                
-                metadata = fetch_omdb_metadata(cleaned_title, year, api_key)
-                
-                if metadata:
-                    raw_actors = metadata.get("Actors", "N/A").split(',')
-                    actors = [a.strip() for a in raw_actors[0:3]]
-                    omdb_type = metadata.get("Type", "movie").lower()
-                    media_type = "Serie" if omdb_type in ["series", "episode"] else "Película"
-                    
-                    movie_entry = {
-                        "id": f"v_{int(os.path.getmtime(os.path.join(path, file)))}",
-                        "title": metadata.get("Title", cleaned_title),
-                        "year": metadata.get("Year", year or "N/A"),
-                        "rating": metadata.get("imdbRating", "0.0"),
-                        "category": category,
-                        "type": media_type,
-                        "meta": f"{metadata.get('Genre', 'Varios')} · {', '.join(actors)}",
-                        "poster": metadata.get("Poster", "") if metadata.get("Poster") != "N/A" else "",
-                        "plot": metadata.get("Plot", "Sin sinopsis disponible."),
-                        "rawName": raw_name
-                    }
-                else:
-                    media_type = "Serie" if category == "series" else "Película"
-                    movie_entry = {
-                        "id": f"v_{int(os.path.getmtime(os.path.join(path, file)))}",
-                        "title": cleaned_title,
-                        "year": year or "N/A",
-                        "rating": "0.0",
-                        "category": category,
-                        "type": media_type,
-                        "meta": "Desconocido",
-                        "poster": "",
-                        "plot": "Indexado en modo offline sin conexión a OMDb API.",
-                        "rawName": raw_name
-                    }
-                new_movies.append(movie_entry)
-
-    state["movies"] = new_movies
-    state["updatedAt"] = int(time.time() * 1000)
-    save_local_state(state)
-    return state
-
-# ==========================================
-# INTERFAZ SINGLE-FILE MONOLITHIC COHESION
-# ==========================================
-HTML_APP = """<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -149,7 +13,7 @@ HTML_APP = """<!DOCTYPE html>
             --separator: rgba(255,255,255,0.09); --label: #ffffff; --label2: #98989d;
             --label3: #636366; --accent: #ff9f0a; --blue: #007aff; --green: #30d158; --red: #ff453a;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; -webkit-tap-highlight-color: transparent;}
         body { background: var(--bg); color: var(--label); padding: calc(env(safe-area-inset-top) + 0.6rem) 0.8rem 6rem 0.8rem; }
         .container { max-width: 800px; margin: 0 auto; }
         header { padding: 0.4rem 0.1rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
@@ -158,10 +22,10 @@ HTML_APP = """<!DOCTYPE html>
         .header-actions { display: flex; gap: 0.5rem; }
         .btn-panel { background: var(--surface2); border: 1px solid var(--surface3); color: white; padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.82rem; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; }
         .btn-panel.scan { background: var(--blue); border-color: var(--blue); }
-        .btn-panel.spinning { animation: spin 1s linear infinite; opacity: 0.6; }
+        .btn-panel.spinning { animation: spin 1s linear infinite; opacity: 0.6; pointer-events: none; }
 
         .filter-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; margin-bottom: 0.8rem; }
-        .filter-panel select { background: var(--surface); border: 1px solid var(--surface2); padding: 0.6rem; border-radius: 8px; color: white; font-size: 0.8rem; outline: none; }
+        .filter-panel select { background: var(--surface); border: 1px solid var(--surface2); padding: 0.6rem; border-radius: 8px; color: white; font-size: 0.8rem; outline: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2398989d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 6l4 4 4-4'/></svg>"); background-repeat: no-repeat; background-position: right 8px center; padding-right: 24px;}
 
         .search-input { width: 100%; background: var(--surface); border: 1px solid var(--surface2); padding: 0.6rem; border-radius: 10px; color: white; font-size: 0.88rem; outline: none; margin-bottom: 0.8rem; }
 
@@ -182,10 +46,13 @@ HTML_APP = """<!DOCTYPE html>
         
         .card-actions { border-top: 1px solid var(--separator); padding: 0.4rem; display: flex; justify-content: space-between; background: rgba(255,255,255,0.01); }
         .btn-card { background: transparent; border: none; color: var(--blue); font-size: 0.72rem; font-weight: 600; cursor: pointer; }
+        .btn-card.del { color: var(--red); }
         
         .empty-state { grid-column: 1/-1; text-align: center; color: var(--label3); padding: 4rem 1rem; font-size: 0.88rem; }
-        .footer { margin-top: 2rem; text-align: center; padding-bottom: 2rem; display: flex; flex-direction: column; gap: 0.4rem; }
-        .btn-footer { background: transparent; border: none; color: var(--label3); font-size: 0.72rem; text-decoration: underline; cursor: pointer; }
+        .footer { margin-top: 2rem; text-align: center; padding-bottom: 2rem; display: flex; flex-direction: column; gap: 0.6rem; align-items: center;}
+        .btn-footer { background: transparent; border: none; color: var(--label3); font-size: 0.75rem; text-decoration: underline; cursor: pointer; }
+        
+        #directoryInput { display: none; }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
@@ -194,13 +61,15 @@ HTML_APP = """<!DOCTYPE html>
         <header>
             <div>
                 <h1>CinePulse</h1>
-                <div style="font-size:0.75rem; color:var(--label2);">Catálogo Único Unificado</div>
+                <div style="font-size:0.75rem; color:var(--label2);">Catálogo Cloud & Offline (Pure HTML)</div>
             </div>
             <div class="header-actions">
-                <button class="btn-panel scan" id="btnScan" onclick="triggerDirectoryScan()">⚡ Scan Disco</button>
-                <button class="btn-panel" onclick="manualSync()">🔄 Cloud</button>
+                <button class="btn-panel scan" id="btnScan" onclick="document.getElementById('directoryInput').click()">⚡ Scan Disco</button>
+                <button class="btn-panel" id="btnCloudSync" onclick="manualSync()">🔄 Sync</button>
             </div>
         </header>
+
+        <input type="file" id="directoryInput" webkitdirectory directory multiple onchange="handleDirectorySelection(event)">
 
         <div class="filter-panel">
             <select id="filtLocation" onchange="render()">
@@ -230,34 +99,195 @@ HTML_APP = """<!DOCTYPE html>
 
         <div class="footer">
             <button class="btn-footer" onclick="setupOMDbKey()">⚙️ Configurar OMDb API Key</button>
-            <button class="btn-footer" onclick="forceSetupCredentials()">⚙️ Sincronización Avanzada GitHub Gist</button>
+            <button class="btn-footer" onclick="forceSetupCredentials()">⚙️ Configurar GitHub Gist (Sync)</button>
         </div>
     </div>
 
     <script>
-        let state = { updatedAt: 0, omdbKey: 'tt77462', movies: [] };
+        const FALLBACK_PLOT = "Indexado localmente en frío. Conectate a internet para scrapear OMDb.";
+        
+        let state = JSON.parse(localStorage.getItem('cinepulse_cloud_state')) || { 
+            updatedAt: 0, 
+            omdbKey: '', 
+            movies: [] 
+        };
 
-        async function triggerDirectoryScan() {
+        function getOMDbKey() {
+            return state.omdbKey || "";
+        }
+
+        function setupOMDbKey() {
+            const n = prompt("Ingresá tu API Key de OMDb:", state.omdbKey);
+            if(n !== null) {
+                state.omdbKey = n.trim();
+                save();
+                alert("Key guardada. Dale a 'Scan Disco' para re-procesar los archivos vacíos.");
+            }
+        }
+
+        function getSyncCredentials() {
+            let token = localStorage.getItem('wishlist_gh_token') || '';
+            let gistId = localStorage.getItem('wishlist_gh_gist') || '';
+            return { token, gistId };
+        }
+
+        function forceSetupCredentials() {
+            const t = prompt("GitHub Token (PAT):", localStorage.getItem('wishlist_gh_token') || '');
+            const g = prompt("Gist ID de respaldo:", localStorage.getItem('wishlist_gh_gist') || '');
+            if(t !== null && g !== null) {
+                localStorage.setItem('wishlist_gh_token', t.trim());
+                localStorage.setItem('wishlist_gh_gist', g.trim());
+                manualSync();
+            }
+        }
+
+        async function save() {
+            state.updatedAt = Date.now();
+            localStorage.setItem('cinepulse_cloud_state', JSON.stringify(state));
+            populateTaxonomies();
+            render();
+            await autoPushToCloud();
+        }
+
+        function cleanReleaseName(filename) {
+            let name = filename.replace(/\.[^/.]+$/, ""); // Quitar extensión
+            name = name.replace(/\.(2160p|1080p|4k|bluray|x264|x265|web|hdr|aac5\.1|10bit|webdl|h265|ita|eng|yts|brrip|hdrip|dvdrip|graces).*/i, '');
+            name = name.replace(/[._\-]/g, ' ').trim();
+            return name;
+        }
+
+        async function handleDirectorySelection(event) {
+            const files = event.target.files;
+            if(!files || files.length === 0) return;
+
+            const apiKey = getOMDbKey();
+            if(!apiKey) {
+                alert("Aviso: No tenés configurada la API Key de OMDb. El escaneo leerá los nombres pero no bajará sinopsis ni pósters.");
+            }
+
             const btn = document.getElementById('btnScan');
             btn.classList.add('spinning');
             btn.textContent = "...";
-            try {
-                const res = await fetch('/api/scan', { method: 'POST' });
-                if(res.ok) {
-                    state = await res.json();
-                    localStorage.setItem('cinepulse_state_local', JSON.stringify(state));
-                    populateTaxonomies();
-                    render();
+
+            const validExtensions = ['.mkv', '.mp4', '.avi', '.mov'];
+            const currentMoviesMap = { ...state.movies.reduce((acc, m) => ({ ...acc, [m.rawName]: m }), {}) };
+            const detectedMovies = [];
+
+            for(let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const relativePath = file.webkitRelativePath || file.name;
+                const lowerPath = relativePath.toLowerCase();
+
+                const hasValidExt = validExtensions.some(ext => lowerPath.endsWith(ext));
+                if(!hasValidExt) continue;
+
+                const fileName = file.name;
+                const rawName = fileName.replace(/\.[^/.]+$/, "");
+
+                let category = 'all';
+                if(lowerPath.includes('/bere/')) category = 'bere';
+                else if(lowerPath.includes('/milo/')) category = 'milo';
+                else if(lowerPath.includes('/series/')) category = 'series';
+                
+                let defaultType = category === 'series' ? 'Serie' : 'Película';
+
+                // Check si ya existe en la base
+                if(currentMoviesMap[rawName]) {
+                    let existingMovie = currentMoviesMap[rawName];
+                    existingMovie.category = category;
+                    existingMovie.type = existingMovie.type || defaultType;
+
+                    // Lógica de Re-Scrape: Si tiene el plot viejo o rating 0, intentamos actualizarlo
+                    if (apiKey && (existingMovie.plot.includes("Indexado localmente en frío") || existingMovie.rating === "0.0" || existingMovie.rating === "")) {
+                        const cleanedTitle = cleanReleaseName(fileName);
+                        const yearMatch = fileName.match(/\b(19|20)\d{2}\b/);
+                        const year = yearMatch ? yearMatch[0] : "";
+                        let yearParam = year ? `&y=${year}` : '';
+
+                        try {
+                            const res = await fetch(`https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(cleanedTitle)}${yearParam}&plot=full`);
+                            const data = await res.json();
+                            if(data && data.Response === "True") {
+                                const rawActors = data.Actors ? data.Actors.split(',') : [];
+                                const actors = rawActors.slice(0,3).map(a => a.trim());
+                                existingMovie.title = data.Title || existingMovie.title;
+                                existingMovie.year = data.Year || existingMovie.year;
+                                existingMovie.rating = data.imdbRating !== "N/A" ? data.imdbRating : "0.0";
+                                existingMovie.meta = `${data.Genre || 'Varios'} · ${actors.join(', ')}`;
+                                existingMovie.poster = data.Poster !== "N/A" ? data.Poster : "";
+                                existingMovie.plot = data.Plot !== "N/A" ? data.Plot : existingMovie.plot;
+                                existingMovie.type = data.Type === "series" ? "Serie" : "Película";
+                            }
+                        } catch(err) {
+                            console.log("Fallo de red al hacer re-scrape");
+                        }
+                    }
+                    detectedMovies.push(existingMovie);
+                    continue;
                 }
-            } catch(e) { alert("Error conectando con el servidor local de Python."); }
-            finally { btn.classList.remove('spinning'); btn.textContent = "⚡ Scan Disco"; }
+
+                // Archivo totalmente nuevo
+                const cleanedTitle = cleanReleaseName(fileName);
+                const yearMatch = fileName.match(/\b(19|20)\d{2}\b/);
+                const year = yearMatch ? yearMatch[0] : "";
+                let yearParam = year ? `&y=${year}` : '';
+
+                let movieEntry = {
+                    id: 'v_' + Date.now() + '_' + i,
+                    title: cleanedTitle,
+                    year: year || "N/A",
+                    rating: "0.0",
+                    category: category,
+                    type: defaultType,
+                    meta: "Desconocido",
+                    poster: "",
+                    plot: FALLBACK_PLOT,
+                    rawName: rawName
+                };
+
+                if(apiKey) {
+                    try {
+                        const targetUrl = `https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(cleanedTitle)}${yearParam}&plot=full`;
+                        const res = await fetch(targetUrl);
+                        const data = await res.json();
+                        if(data && data.Response === "True") {
+                            const rawActors = data.Actors ? data.Actors.split(',') : [];
+                            const actors = rawActors.slice(0,3).map(a => a.trim());
+                            movieEntry.title = data.Title || movieEntry.title;
+                            movieEntry.year = data.Year || movieEntry.year;
+                            movieEntry.rating = data.imdbRating !== "N/A" ? data.imdbRating : "0.0";
+                            movieEntry.meta = `${data.Genre || 'Varios'} · ${actors.join(', ')}`;
+                            movieEntry.poster = data.Poster !== "N/A" ? data.Poster : "";
+                            movieEntry.plot = data.Plot !== "N/A" ? data.Plot : movieEntry.plot;
+                            movieEntry.type = data.Type === "series" ? "Serie" : "Película";
+                        }
+                    } catch(err) {
+                        console.log("Fallo HTTP mitigado durante el web scraping.");
+                    }
+                }
+                detectedMovies.push(movieEntry);
+            }
+
+            // Sync final: reemplazamos la base por lo que físicamente detectó el file input
+            state.movies = detectedMovies;
+            await save();
+
+            // Limpiar input para permitir re-selección
+            document.getElementById('directoryInput').value = '';
+            
+            btn.classList.remove('spinning');
+            btn.textContent = "⚡ Scan Disco";
+            alert(`Directorio procesado. ${detectedMovies.length} elementos indexados.`);
         }
 
         function populateTaxonomies() {
             const genres = new Set();
             const years = new Set();
             state.movies.forEach(m => {
-                if(m.year && m.year !== "N/A") years.add(m.year.split('–')[0].trim());
+                if(m.year && m.year !== "N/A") {
+                    const cleanY = m.year.split('–')[0].trim();
+                    if(cleanY) years.add(cleanY);
+                }
                 if(m.meta && m.meta !== "Desconocido") {
                     const genreChunk = m.meta.split('·')[0];
                     genreChunk.split(',').forEach(g => {
@@ -270,10 +300,10 @@ HTML_APP = """<!DOCTYPE html>
             const ySel = document.getElementById('filtYear');
             const prevG = gSel.value;
             const prevY = ySel.value;
-            
+
             gSel.innerHTML = '<option value="">Todos los Géneros</option>' + [...genres].sort().map(g => `<option value="${g}">${g}</option>`).join('');
             ySel.innerHTML = '<option value="">Todos los Años</option>' + [...years].sort((a,b)=>b-a).map(y => `<option value="${y}">${y}</option>`).join('');
-            
+
             if([...genres].includes(prevG)) gSel.value = prevG;
             if([...years].includes(prevY)) ySel.value = prevY;
         }
@@ -282,51 +312,83 @@ HTML_APP = """<!DOCTYPE html>
             const m = state.movies.find(m => m.id === id);
             if(!m) return;
             const t = prompt("Modificar Título:", m.title);
-            const r = prompt("Modificar Rating:", m.rating);
-            if(t !== null && r !== null) {
-                m.title = t.trim() || m.title; m.rating = r.trim() || m.rating;
-                state.updatedAt = Date.now();
-                localStorage.setItem('cinepulse_state_local', JSON.stringify(state));
-                render();
-                await fetch('/api/save', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(state) });
+            const r = prompt("Modificar Rating (IMDb):", m.rating);
+            const p = prompt("Modificar Trama / Notas:", m.plot);
+            if(t !== null && r !== null && p !== null) {
+                m.title = t.trim() || m.title;
+                m.rating = r.trim() || m.rating;
+                m.plot = p.trim() || m.plot;
+                await save();
             }
         }
 
-        function setupOMDbKey() {
-            const n = prompt("Ingresá tu API Key de OMDb:", state.omdbKey);
-            if(n) {
-                state.omdbKey = n.trim();
-                state.updatedAt = Date.now();
-                localStorage.setItem('cinepulse_state_local', JSON.stringify(state));
-                fetch('/api/save', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(state) }).then(() => {
-                    alert("Key guardada. Dale a Scan Disco para reprocesar.");
+        async function deleteMovie(id) {
+            if(confirm("¿Forzar eliminación del catálogo? (Reaparecerá si hacés scan y el archivo sigue en el disco)")) {
+                state.movies = state.movies.filter(m => m.id !== id);
+                await save();
+            }
+        }
+
+        let isSyncingLock = false;
+        async function autoPullFromCloud() {
+            if(isSyncingLock) return;
+            const creds = getSyncCredentials();
+            if(!creds.token || !creds.gistId) return;
+
+            const syncBtn = document.getElementById('btnCloudSync');
+            if(syncBtn) syncBtn.classList.add('spinning');
+
+            try {
+                const res = await fetch(`https://api.github.com/gists/${creds.gistId}?_cb=${Date.now()}`, {
+                    headers: { 'Authorization': `token ${creds.token}` }
                 });
-            }
+                if(res.ok) {
+                    const gistData = await res.json();
+                    if(gistData.files && gistData.files["movie_catalog.json"]) {
+                        const cloudContent = JSON.parse(gistData.files["movie_catalog.json"].content);
+                        const cloudUpdatedAt = cloudContent.updatedAt || 0;
+                        
+                        if(cloudUpdatedAt > state.updatedAt) {
+                            state = cloudContent;
+                            localStorage.setItem('cinepulse_cloud_state', JSON.stringify(state));
+                            populateTaxonomies();
+                            render();
+                        } else if(state.updatedAt > cloudUpdatedAt) {
+                            await autoPushToCloud(true);
+                        }
+                    }
+                }
+            } catch(e) { 
+                console.log("Modo offline activo."); 
+            } finally { if(syncBtn) syncBtn.classList.remove('spinning'); }
         }
 
-        function forceSetupCredentials() {
-            const t = prompt("GitHub Token (PAT):", localStorage.getItem('wishlist_gh_token') || '');
-            const g = prompt("Gist ID de respaldo:", localStorage.getItem('wishlist_gh_gist') || '');
-            if(t && g) {
-                localStorage.setItem('wishlist_gh_token', t.trim());
-                localStorage.setItem('wishlist_gh_gist', g.trim());
-                manualSync();
-            }
+        async function autoPushToCloud(bypassLock = false) {
+            if(isSyncingLock && !bypassLock) return;
+            const creds = getSyncCredentials();
+            if(!creds.token || !creds.gistId) return;
+            
+            isSyncingLock = true;
+            const syncBtn = document.getElementById('btnCloudSync');
+            if(syncBtn) syncBtn.classList.add('spinning');
+
+            try {
+                await fetch(`https://api.github.com/gists/${creds.gistId}`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `token ${creds.token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ files: { "movie_catalog.json": { content: JSON.stringify(state, null, 2) } } })
+                });
+            } catch(e) { 
+                console.log("Push de datos interceptado (Offline)."); 
+            } finally { isSyncingLock = false; if(syncBtn) syncBtn.classList.remove('spinning'); }
         }
 
         async function manualSync() {
-            const token = localStorage.getItem('wishlist_gh_token');
-            const gistId = localStorage.getItem('wishlist_gh_gist');
-            if(!token || !gistId) { forceSetupCredentials(); return; }
-            
-            try {
-                const res = await fetch(`https://api.github.com/gists/${gistId}`, {
-                    method: 'PATCH',
-                    headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ files: { "movie_catalog.json": { content: JSON.stringify(state, null, 2) } } })
-                });
-                if(res.ok) alert("Sincronización en la nube exitosa.");
-            } catch(e) { alert("Error de red con la API de GitHub."); }
+            const creds = getSyncCredentials();
+            if(!creds.token || !creds.gistId) { forceSetupCredentials(); return; }
+            await autoPullFromCloud();
+            await autoPushToCloud(true);
+            alert("🔄 Sincronización en la nube completada.");
         }
 
         function render() {
@@ -348,7 +410,11 @@ HTML_APP = """<!DOCTYPE html>
             if(rating) filtered = filtered.filter(m => parseFloat(m.rating) >= parseFloat(rating));
             
             if(search) {
-                filtered = filtered.filter(m => m.title.toLowerCase().includes(search) || m.meta.toLowerCase().includes(search) || (m.rawName && m.rawName.toLowerCase().includes(search)));
+                filtered = filtered.filter(m => 
+                    m.title.toLowerCase().includes(search) || 
+                    m.meta.toLowerCase().includes(search) || 
+                    (m.rawName && m.rawName.toLowerCase().includes(search))
+                );
             }
 
             if(filtered.length === 0) {
@@ -359,13 +425,17 @@ HTML_APP = """<!DOCTYPE html>
             filtered.forEach(m => {
                 const card = document.createElement('div');
                 card.className = 'movie-card';
-                const posterHtml = m.poster ? `<img src="${m.poster}" class="poster-img" alt="Poster">` : '<div style="font-size:3rem; padding: 2rem 0;">🎬</div>';
+                
+                const posterStyle = m.poster ? '' : 'style="display:flex;align-items:center;justify-content:center;background:#2c2c2e;height:100%;font-size:3rem;padding:2.5rem 0;"';
+                const posterHtml = m.poster 
+                    ? `<img src="${m.poster}" class="poster-img" alt="Poster" onerror="this.style.display='none'; this.parentElement.innerHTML='🎬';">`
+                    : `🎬`;
                 
                 const locLabel = m.category === 'all' ? 'Raíz' : m.category;
                 const typeLabel = m.type || 'Película';
-                
+
                 card.innerHTML = `
-                    <div class="poster-wrapper">
+                    <div class="poster-wrapper" ${posterStyle}>
                         ${posterHtml}
                         <div class="folder-badge">${locLabel} · ${typeLabel}</div>
                         ${m.rating && m.rating !== "0.0" ? `<div class="rating-badge">⭐ ${m.rating}</div>` : ''}
@@ -377,74 +447,24 @@ HTML_APP = """<!DOCTYPE html>
                     </div>
                     <div class="card-actions">
                         <button class="btn-card" onclick="editMovieInline('${m.id}')">Editar</button>
+                        <button class="btn-card del" onclick="deleteMovie('${m.id}')">Quitar</button>
                     </div>
                 `;
                 grid.appendChild(card);
             });
         }
 
-        window.onload = async function() {
-            const cache = localStorage.getItem('cinepulse_state_local');
-            if(cache) { state = JSON.parse(cache); populateTaxonomies(); render(); }
-            
-            try {
-                const res = await fetch('/api/load');
-                if(res.ok) {
-                    state = await res.json();
-                    localStorage.setItem('cinepulse_state_local', JSON.stringify(state));
-                    populateTaxonomies();
-                    render();
-                }
-            } catch(e){}
+        window.onload = function() {
+            populateTaxonomies();
+            render();
+            setTimeout(() => { autoPullFromCloud(); }, 100);
         };
+
+        document.addEventListener("visibilitychange", async () => {
+            if (!document.hidden) {
+                await autoPullFromCloud();
+            }
+        });
     </script>
 </body>
 </html>
-"""
-
-# ==========================================
-# ROUTER BACKEND NATIVO (PYTHON SERVER)
-# ==========================================
-class CinePulseRequestHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        if self.path == "/" or self.path == "/index.html":
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.end_headers()
-            self.wfile.write(HTML_APP.encode("utf-8"))
-        elif self.path == "/api/load":
-            state = load_local_state()
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps(state).encode("utf-8"))
-        else:
-            self.send_error(404, "Recurso no encontrado")
-
-    def do_POST(self):
-        if self.path == "/api/scan":
-            updated_state = scan_disk_directory()
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps(updated_state).encode("utf-8"))
-        elif self.path == "/api/save":
-            content_length = int(self.headers['Content-Length'])
-            post_data = self.rfile.read(content_length)
-            state = json.loads(post_data.decode('utf-8'))
-            save_local_state(state)
-            self.send_response(200)
-            self.end_headers()
-            self.wfile.write(b'{"status": "ok"}')
-
-def run_server():
-    server_address = ('', 8080)
-    httpd = HTTPServer(server_address, CinePulseRequestHandler)
-    print("🎬 CinePulse Server corriendo en http://localhost:8080")
-    try:
-        httpd.serve_forever()
-    except KeyboardInterrupt:
-        print("\n[!] Servidor detenido por el usuario.")
-
-if __name__ == "__main__":
-    run_server()
