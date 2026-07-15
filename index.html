@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>CinePulse</title>
+    <title>CinePulse v4.0</title>
     <link class="apple-touch-icon" href="https://fav.farm/🎬">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -21,7 +21,6 @@
         
         .header-actions { display: flex; gap: 0.5rem; }
         .btn-panel { background: var(--surface2); border: 1px solid var(--surface3); color: white; padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.82rem; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; }
-        .btn-panel.scan { background: var(--blue); border-color: var(--blue); }
         .btn-panel.spinning { animation: spin 1s linear infinite; opacity: 0.6; pointer-events: none; }
 
         .filter-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; margin-bottom: 0.8rem; }
@@ -49,10 +48,36 @@
         .btn-card.del { color: var(--red); }
         
         .empty-state { grid-column: 1/-1; text-align: center; color: var(--label3); padding: 4rem 1rem; font-size: 0.88rem; }
-        .footer { margin-top: 2rem; text-align: center; padding-bottom: 2rem; display: flex; flex-direction: column; gap: 0.6rem; align-items: center;}
+        
+        /* Formularios y Modales */
+        .form-card { background: var(--surface); border-radius: 14px; margin-bottom: 0.8rem; overflow: hidden; border: 1px solid var(--separator); }
+        .form-toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0.9rem; cursor: pointer; }
+        .form-toggle-row .label { font-weight: 700; font-size: 0.88rem; display: flex; align-items: center; gap: 0.4rem; color: var(--accent); }
+        .form-card.open .chevron { transform: rotate(180deg); }
+        .form-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+        .form-card.open .form-body { max-height: 1500px; }
+        .form-body-inner { padding: 0.1rem 0.9rem 0.9rem 0.9rem; display: flex; flex-direction: column; gap: 0.6rem; }
+        
+        .form-group { display: flex; flex-direction: column; gap: 0.25rem; }
+        .form-group label { font-size: 0.65rem; font-weight: 600; color: var(--label2); text-transform: uppercase; letter-spacing: 0.02em; }
+        .form-group input, .form-group select, .form-group textarea { background: var(--surface2); border: none; padding: 0.65rem 0.75rem; border-radius: 8px; color: var(--label); font-size: 0.88rem; outline: none; }
+        .row-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+        
+        .scraper-group { display: flex; gap: 0.4rem; margin-bottom: 0.5rem; }
+        .scraper-group input { flex: 1; background: var(--surface2); border: none; padding: 0.65rem 0.75rem; border-radius: 8px; color: white; font-size: 0.88rem; outline: none;}
+        .btn-scrap { background: var(--blue); color: white; border: none; padding: 0 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.82rem; cursor: pointer; }
+
+        .omdb-results-box { display: none; flex-direction: column; gap: 0.4rem; max-height: 250px; overflow-y: auto; background: var(--surface2); padding: 0.5rem; border-radius: 8px; margin-bottom: 0.5rem; }
+        .omdb-item { display: flex; gap: 0.6rem; align-items: center; cursor: pointer; padding: 0.4rem; background: var(--surface3); border-radius: 6px; transition: background 0.1s; }
+        .omdb-item:hover { background: var(--separator); }
+        .omdb-item img { width: 35px; height: 50px; object-fit: cover; border-radius: 4px; background: #000; }
+        .omdb-item-info { display: flex; flex-direction: column; justify-content: center; }
+
+        .btn-add { background: var(--accent); color: black; border: none; padding: 0.75rem; border-radius: 10px; font-weight: 700; font-size: 0.9rem; margin-top: 0.5rem; cursor: pointer; }
+
+        .footer { margin-top: 2rem; text-align: center; padding-bottom: 2rem; display: flex; flex-direction: column; gap: 0.8rem; align-items: center;}
         .btn-footer { background: transparent; border: none; color: var(--label3); font-size: 0.75rem; text-decoration: underline; cursor: pointer; }
         
-        #directoryInput { display: none; }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
@@ -61,16 +86,88 @@
         <header>
             <div>
                 <h1>CinePulse</h1>
-                <div style="font-size:0.75rem; color:var(--label2);">Catálogo Cloud & Offline (Pure HTML)</div>
+                <div style="font-size:0.75rem; color:var(--label2);">Catálogo Manual (100% Cloud)</div>
             </div>
             <div class="header-actions">
-                <button class="btn-panel scan" id="btnScan" onclick="document.getElementById('directoryInput').click()">⚡ Scan Disco</button>
-                <button class="btn-panel" id="btnCloudSync" onclick="manualSync()">🔄 Sync</button>
+                <button class="btn-panel" id="btnCloudSync" onclick="manualSync()">🔄 Sincronizar</button>
             </div>
         </header>
 
-        <input type="file" id="directoryInput" webkitdirectory directory multiple onchange="handleDirectorySelection(event)">
+        <!-- Acordeón para Añadir Película Manualmente -->
+        <div class="form-card" id="formCard">
+            <div class="form-toggle-row" onclick="toggleForm()">
+                <span class="label">➕ Añadir Medio al Catálogo</span>
+                <span class="chevron" style="font-size:0.7rem; color:var(--label3); transition: transform 0.2s;">▼</span>
+            </div>
+            <div class="form-body">
+                <div class="form-body-inner">
+                    <!-- Buscador OMDb -->
+                    <div class="form-group" style="background: rgba(0,122,255,0.1); padding: 0.6rem; border-radius: 10px; border: 1px solid rgba(0,122,255,0.3);">
+                        <label style="color: var(--blue);">1. Buscar datos en OMDb</label>
+                        <div class="scraper-group">
+                            <input type="text" id="omdbSearchInput" placeholder="Título de la película o serie..." onkeypress="if(event.key==='Enter') searchOMDb()">
+                            <button class="btn-scrap" id="btnSearchOMDb" onclick="searchOMDb()">Buscar</button>
+                        </div>
+                        <div class="omdb-results-box" id="omdbResults"></div>
+                    </div>
 
+                    <!-- Campos Manuales -->
+                    <div class="row-inputs">
+                        <div class="form-group">
+                            <label>Ubicación FíSica (Disco)</label>
+                            <select id="fCategory">
+                                <option value="all">Raíz</option>
+                                <option value="bere">Bere</option>
+                                <option value="milo">Milo</option>
+                                <option value="series">Series</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo</label>
+                            <select id="fType">
+                                <option value="Película">Película</option>
+                                <option value="Serie">Serie</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row-inputs">
+                        <div class="form-group">
+                            <label>Título Limpio</label>
+                            <input type="text" id="fTitle" placeholder="Ej: Inception">
+                        </div>
+                        <div class="form-group">
+                            <label>Año</label>
+                            <input type="text" id="fYear" placeholder="Ej: 2010">
+                        </div>
+                    </div>
+
+                    <div class="row-inputs">
+                        <div class="form-group">
+                            <label>Rating (IMDb)</label>
+                            <input type="text" id="fRating" placeholder="Ej: 8.8">
+                        </div>
+                        <div class="form-group">
+                            <label>Género · Actores</label>
+                            <input type="text" id="fMeta" placeholder="Ej: Sci-Fi · DiCaprio">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>URL Póster</label>
+                        <input type="text" id="fPoster" placeholder="https://...">
+                    </div>
+                    <div class="form-group">
+                        <label>Sinopsis Completa</label>
+                        <textarea id="fPlot" rows="3" placeholder="Trama..."></textarea>
+                    </div>
+
+                    <button class="btn-add" onclick="addManualMovie()">Guardar en Catálogo</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
         <div class="filter-panel">
             <select id="filtLocation" onchange="render()">
                 <option value="">Todas las Ubicaciones</option>
@@ -93,24 +190,27 @@
             </select>
         </div>
 
-        <input type="text" id="searchInput" class="search-input" placeholder="Buscar por película, directores, etiquetas..." oninput="render()">
+        <input type="text" id="searchInput" class="search-input" placeholder="Buscar en tu catálogo..." oninput="render()">
 
         <div class="catalog-grid" id="catalogGrid"></div>
 
         <div class="footer">
             <button class="btn-footer" onclick="setupOMDbKey()">⚙️ Configurar OMDb API Key</button>
             <button class="btn-footer" onclick="forceSetupCredentials()">⚙️ Configurar GitHub Gist (Sync)</button>
+            <button class="btn-footer" style="color: var(--red); margin-top: 1rem; font-weight:bold;" onclick="wipeCatalog()">🗑️ BORRAR TODO EL CATÁLOGO (Arrancar de 0)</button>
         </div>
     </div>
 
     <script>
-        const FALLBACK_PLOT = "Indexado localmente en frío. Conectate a internet para scrapear OMDb.";
-        
-        let state = JSON.parse(localStorage.getItem('cinepulse_cloud_state')) || { 
+        let state = JSON.parse(localStorage.getItem('cinepulse_cloud_state_v4')) || { 
             updatedAt: 0, 
             omdbKey: '', 
             movies: [] 
         };
+
+        function toggleForm() {
+            document.getElementById('formCard').classList.toggle('open');
+        }
 
         function getOMDbKey() {
             return state.omdbKey || "";
@@ -121,7 +221,7 @@
             if(n !== null) {
                 state.omdbKey = n.trim();
                 save();
-                alert("Key guardada. Dale a 'Scan Disco' para re-procesar los archivos vacíos.");
+                alert("Key de OMDb guardada.");
             }
         }
 
@@ -143,195 +243,172 @@
 
         async function save() {
             state.updatedAt = Date.now();
-            localStorage.setItem('cinepulse_cloud_state', JSON.stringify(state));
+            localStorage.setItem('cinepulse_cloud_state_v4', JSON.stringify(state));
             populateTaxonomies();
             render();
             await autoPushToCloud();
         }
 
-        function cleanReleaseName(filename) {
-            let name = filename.replace(/\.[^/.]+$/, ""); // Quitar extensión
-            name = name.replace(/\.(2160p|1080p|4k|bluray|x264|x265|web|hdr|aac5\.1|10bit|webdl|h265|ita|eng|yts|brrip|hdrip|dvdrip|graces).*/i, '');
-            name = name.replace(/[._\-]/g, ' ').trim();
-            return name;
+        // ==========================================
+        // LÓGICA DE BÚSQUEDA Y AGREGADO MANUAL
+        // ==========================================
+        async function searchOMDb() {
+            const query = document.getElementById('omdbSearchInput').value.trim();
+            const apiKey = getOMDbKey();
+            if (!apiKey) { alert("Tenés que configurar tu API Key de OMDb primero (botón al fondo)."); return; }
+            if (!query) return;
+
+            const resDiv = document.getElementById('omdbResults');
+            const btnSearch = document.getElementById('btnSearchOMDb');
+            
+            resDiv.style.display = "flex";
+            resDiv.innerHTML = "<div style='color:var(--label2); text-align:center; padding:1rem;'>Buscando...</div>";
+            btnSearch.disabled = true;
+
+            try {
+                const res = await fetch(`https://www.omdbapi.com/?apikey=${apiKey}&s=${encodeURIComponent(query)}`);
+                const data = await res.json();
+                
+                if (data.Response === "True") {
+                    resDiv.innerHTML = data.Search.map(m => {
+                        const typeLabel = m.Type === 'series' ? 'Serie' : 'Película';
+                        const posterUrl = m.Poster !== 'N/A' ? m.Poster : '';
+                        return `
+                        <div class="omdb-item" onclick="selectOMDbResult('${m.imdbID}')">
+                            <img src="${posterUrl}" alt="Póster">
+                            <div class="omdb-item-info">
+                                <span style="font-size:0.85rem; font-weight:700; color:var(--label);">${m.Title}</span>
+                                <span style="font-size:0.7rem; color:var(--label2);">${m.Year} · ${typeLabel}</span>
+                            </div>
+                        </div>`;
+                    }).join('');
+                } else {
+                    resDiv.innerHTML = `<div style="color:var(--red); font-size:0.8rem; text-align:center;">No se encontraron resultados para "${query}".</div>`;
+                }
+            } catch (e) {
+                resDiv.innerHTML = "<div style='color:var(--red); font-size:0.8rem; text-align:center;'>Error de red al consultar OMDb.</div>";
+            } finally {
+                btnSearch.disabled = false;
+            }
         }
 
-        async function handleDirectorySelection(event) {
-            const files = event.target.files;
-            if(!files || files.length === 0) return;
-
+        async function selectOMDbResult(imdbID) {
             const apiKey = getOMDbKey();
-            if(!apiKey) {
-                alert("Aviso: No tenés configurada la API Key de OMDb. El escaneo leerá los nombres pero no bajará sinopsis ni pósters.");
-            }
+            const resDiv = document.getElementById('omdbResults');
+            resDiv.innerHTML = "<div style='color:var(--accent); text-align:center; padding:1rem;'>Descargando ficha completa...</div>";
+            
+            try {
+                const res = await fetch(`https://www.omdbapi.com/?apikey=${apiKey}&i=${imdbID}&plot=full`);
+                const data = await res.json();
+                if (data.Response === "True") {
+                    document.getElementById('fTitle').value = data.Title || "";
+                    document.getElementById('fYear').value = data.Year || "";
+                    document.getElementById('fRating').value = data.imdbRating !== "N/A" ? data.imdbRating : "0.0";
+                    document.getElementById('fType').value = data.Type === "series" ? "Serie" : "Película";
 
-            const btn = document.getElementById('btnScan');
-            btn.classList.add('spinning');
-            btn.textContent = "...";
+                    const rawActors = data.Actors ? data.Actors.split(',') : [];
+                    const actors = rawActors.slice(0,3).map(a => a.trim());
+                    document.getElementById('fMeta').value = `${data.Genre || 'Varios'} · ${actors.join(', ')}`;
 
-            const validExtensions = ['.mkv', '.mp4', '.avi', '.mov'];
-            const currentMoviesMap = { ...state.movies.reduce((acc, m) => ({ ...acc, [m.rawName]: m }), {}) };
-            const detectedMovies = [];
+                    document.getElementById('fPoster').value = data.Poster !== "N/A" ? data.Poster : "";
+                    document.getElementById('fPlot').value = data.Plot !== "N/A" ? data.Plot : "";
 
-            for(let i = 0; i < files.length; i++) {
-                const file = files[i];
-                const relativePath = file.webkitRelativePath || file.name;
-                const lowerPath = relativePath.toLowerCase();
-
-                const hasValidExt = validExtensions.some(ext => lowerPath.endsWith(ext));
-                if(!hasValidExt) continue;
-
-                const fileName = file.name;
-                const rawName = fileName.replace(/\.[^/.]+$/, "");
-
-                let category = 'all';
-                if(lowerPath.includes('/bere/')) category = 'bere';
-                else if(lowerPath.includes('/milo/')) category = 'milo';
-                else if(lowerPath.includes('/series/')) category = 'series';
-                
-                let defaultType = category === 'series' ? 'Serie' : 'Película';
-
-                // Check si ya existe en la base
-                if(currentMoviesMap[rawName]) {
-                    let existingMovie = currentMoviesMap[rawName];
-                    existingMovie.category = category;
-                    existingMovie.type = existingMovie.type || defaultType;
-
-                    // Lógica de Re-Scrape: Si tiene el plot viejo o rating 0, intentamos actualizarlo
-                    if (apiKey && (existingMovie.plot.includes("Indexado localmente en frío") || existingMovie.rating === "0.0" || existingMovie.rating === "")) {
-                        const cleanedTitle = cleanReleaseName(fileName);
-                        const yearMatch = fileName.match(/\b(19|20)\d{2}\b/);
-                        const year = yearMatch ? yearMatch[0] : "";
-                        let yearParam = year ? `&y=${year}` : '';
-
-                        try {
-                            const res = await fetch(`https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(cleanedTitle)}${yearParam}&plot=full`);
-                            const data = await res.json();
-                            if(data && data.Response === "True") {
-                                const rawActors = data.Actors ? data.Actors.split(',') : [];
-                                const actors = rawActors.slice(0,3).map(a => a.trim());
-                                existingMovie.title = data.Title || existingMovie.title;
-                                existingMovie.year = data.Year || existingMovie.year;
-                                existingMovie.rating = data.imdbRating !== "N/A" ? data.imdbRating : "0.0";
-                                existingMovie.meta = `${data.Genre || 'Varios'} · ${actors.join(', ')}`;
-                                existingMovie.poster = data.Poster !== "N/A" ? data.Poster : "";
-                                existingMovie.plot = data.Plot !== "N/A" ? data.Plot : existingMovie.plot;
-                                existingMovie.type = data.Type === "series" ? "Serie" : "Película";
-                            }
-                        } catch(err) {
-                            console.log("Fallo de red al hacer re-scrape");
-                        }
+                    // Seleccionar automáticamente "Series" si es una serie
+                    if(data.Type === "series") {
+                        document.getElementById('fCategory').value = "series";
                     }
-                    detectedMovies.push(existingMovie);
-                    continue;
+
+                    resDiv.style.display = "none";
                 }
-
-                // Archivo totalmente nuevo
-                const cleanedTitle = cleanReleaseName(fileName);
-                const yearMatch = fileName.match(/\b(19|20)\d{2}\b/);
-                const year = yearMatch ? yearMatch[0] : "";
-                let yearParam = year ? `&y=${year}` : '';
-
-                let movieEntry = {
-                    id: 'v_' + Date.now() + '_' + i,
-                    title: cleanedTitle,
-                    year: year || "N/A",
-                    rating: "0.0",
-                    category: category,
-                    type: defaultType,
-                    meta: "Desconocido",
-                    poster: "",
-                    plot: FALLBACK_PLOT,
-                    rawName: rawName
-                };
-
-                if(apiKey) {
-                    try {
-                        const targetUrl = `https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(cleanedTitle)}${yearParam}&plot=full`;
-                        const res = await fetch(targetUrl);
-                        const data = await res.json();
-                        if(data && data.Response === "True") {
-                            const rawActors = data.Actors ? data.Actors.split(',') : [];
-                            const actors = rawActors.slice(0,3).map(a => a.trim());
-                            movieEntry.title = data.Title || movieEntry.title;
-                            movieEntry.year = data.Year || movieEntry.year;
-                            movieEntry.rating = data.imdbRating !== "N/A" ? data.imdbRating : "0.0";
-                            movieEntry.meta = `${data.Genre || 'Varios'} · ${actors.join(', ')}`;
-                            movieEntry.poster = data.Poster !== "N/A" ? data.Poster : "";
-                            movieEntry.plot = data.Plot !== "N/A" ? data.Plot : movieEntry.plot;
-                            movieEntry.type = data.Type === "series" ? "Serie" : "Película";
-                        }
-                    } catch(err) {
-                        console.log("Fallo HTTP mitigado durante el web scraping.");
-                    }
-                }
-                detectedMovies.push(movieEntry);
+            } catch (e) {
+                alert("Error obteniendo los detalles de la película.");
+                resDiv.style.display = "none";
             }
+        }
 
-            // Sync final: reemplazamos la base por lo que físicamente detectó el file input
-            state.movies = detectedMovies;
+        async function addManualMovie() {
+            const title = document.getElementById('fTitle').value.trim();
+            if (!title) { alert("El Título es obligatorio para guardar."); return; }
+
+            const category = document.getElementById('fCategory').value;
+            const type = document.getElementById('fType').value;
+            const year = document.getElementById('fYear').value.trim() || "N/A";
+            const rating = document.getElementById('fRating').value.trim() || "0.0";
+            const meta = document.getElementById('fMeta').value.trim() || "Desconocido";
+            const poster = document.getElementById('fPoster').value.trim();
+            const plot = document.getElementById('fPlot').value.trim() || "Sin sinopsis cargada.";
+
+            const newMovie = {
+                id: 'm_' + Date.now(),
+                title: title,
+                year: year,
+                rating: rating,
+                category: category,
+                type: type,
+                meta: meta,
+                poster: poster,
+                plot: plot,
+                rawName: title.toLowerCase().replace(/[^a-z0-9]/g, '_')
+            };
+
+            state.movies.unshift(newMovie);
             await save();
 
-            // Limpiar input para permitir re-selección
-            document.getElementById('directoryInput').value = '';
-            
-            btn.classList.remove('spinning');
-            btn.textContent = "⚡ Scan Disco";
-            alert(`Directorio procesado. ${detectedMovies.length} elementos indexados.`);
+            // Limpiar formulario completo
+            document.getElementById('fTitle').value = "";
+            document.getElementById('fYear').value = "";
+            document.getElementById('fRating').value = "";
+            document.getElementById('fMeta').value = "";
+            document.getElementById('fPoster').value = "";
+            document.getElementById('fPlot').value = "";
+            document.getElementById('omdbSearchInput').value = "";
+            document.getElementById('omdbResults').style.display = "none";
+
+            toggleForm();
+            alert(`"${title}" guardada exitosamente en la ubicación: ${category.toUpperCase()}`);
         }
 
-        function populateTaxonomies() {
-            const genres = new Set();
-            const years = new Set();
-            state.movies.forEach(m => {
-                if(m.year && m.year !== "N/A") {
-                    const cleanY = m.year.split('–')[0].trim();
-                    if(cleanY) years.add(cleanY);
-                }
-                if(m.meta && m.meta !== "Desconocido") {
-                    const genreChunk = m.meta.split('·')[0];
-                    genreChunk.split(',').forEach(g => {
-                        if(g.trim()) genres.add(g.trim());
-                    });
-                }
-            });
-
-            const gSel = document.getElementById('filtGenre');
-            const ySel = document.getElementById('filtYear');
-            const prevG = gSel.value;
-            const prevY = ySel.value;
-
-            gSel.innerHTML = '<option value="">Todos los Géneros</option>' + [...genres].sort().map(g => `<option value="${g}">${g}</option>`).join('');
-            ySel.innerHTML = '<option value="">Todos los Años</option>' + [...years].sort((a,b)=>b-a).map(y => `<option value="${y}">${y}</option>`).join('');
-
-            if([...genres].includes(prevG)) gSel.value = prevG;
-            if([...years].includes(prevY)) ySel.value = prevY;
-        }
-
+        // ==========================================
+        // EDICIÓN, BORRADO INDIVIDUAL Y WIPE GLOBAL
+        // ==========================================
         async function editMovieInline(id) {
             const m = state.movies.find(m => m.id === id);
             if(!m) return;
             const t = prompt("Modificar Título:", m.title);
             const r = prompt("Modificar Rating (IMDb):", m.rating);
-            const p = prompt("Modificar Trama / Notas:", m.plot);
-            if(t !== null && r !== null && p !== null) {
+            if(t !== null && r !== null) {
                 m.title = t.trim() || m.title;
                 m.rating = r.trim() || m.rating;
-                m.plot = p.trim() || m.plot;
                 await save();
             }
         }
 
         async function deleteMovie(id) {
-            if(confirm("¿Forzar eliminación del catálogo? (Reaparecerá si hacés scan y el archivo sigue en el disco)")) {
+            if(confirm("¿Quitar definitivamente del catálogo?")) {
                 state.movies = state.movies.filter(m => m.id !== id);
                 await save();
             }
         }
 
+        async function wipeCatalog() {
+            const confirm1 = confirm("⚠️ ATENCIÓN: Estás a punto de borrar TODO tu catálogo de películas y series.");
+            if (confirm1) {
+                const confirm2 = confirm("🚨 ¿ESTÁS ABSOLUTAMENTE SEGURO? Esta acción es irreversible y borrará el JSON de la nube también.");
+                if (confirm2) {
+                    state.movies = [];
+                    await save();
+                    alert("Catálogo reiniciado a cero exitosamente.");
+                }
+            }
+        }
+
+        // ==========================================
+        // CLOUD SYNC & RENDER
+        // ==========================================
         let isSyncingLock = false;
-        async function autoPullFromCloud() {
-            if(isSyncingLock) return;
+        
+        async function autoPullFromCloud(isForcedManual = false) {
+            if(isSyncingLock && !isForcedManual) return;
             const creds = getSyncCredentials();
             if(!creds.token || !creds.gistId) return;
 
@@ -348,9 +425,9 @@
                         const cloudContent = JSON.parse(gistData.files["movie_catalog.json"].content);
                         const cloudUpdatedAt = cloudContent.updatedAt || 0;
                         
-                        if(cloudUpdatedAt > state.updatedAt) {
+                        if(cloudUpdatedAt > state.updatedAt || isForcedManual) {
                             state = cloudContent;
-                            localStorage.setItem('cinepulse_cloud_state', JSON.stringify(state));
+                            localStorage.setItem('cinepulse_cloud_state_v4', JSON.stringify(state));
                             populateTaxonomies();
                             render();
                         } else if(state.updatedAt > cloudUpdatedAt) {
@@ -386,9 +463,37 @@
         async function manualSync() {
             const creds = getSyncCredentials();
             if(!creds.token || !creds.gistId) { forceSetupCredentials(); return; }
-            await autoPullFromCloud();
+            await autoPullFromCloud(true);
             await autoPushToCloud(true);
-            alert("🔄 Sincronización en la nube completada.");
+            alert("🔄 Sincronización con GitHub completada.");
+        }
+
+        function populateTaxonomies() {
+            const genres = new Set();
+            const years = new Set();
+            state.movies.forEach(m => {
+                if(m.year && m.year !== "N/A") {
+                    const cleanY = m.year.split('–')[0].trim();
+                    if(cleanY) years.add(cleanY);
+                }
+                if(m.meta && m.meta !== "Desconocido") {
+                    const genreChunk = m.meta.split('·')[0];
+                    genreChunk.split(',').forEach(g => {
+                        if(g.trim()) genres.add(g.trim());
+                    });
+                }
+            });
+
+            const gSel = document.getElementById('filtGenre');
+            const ySel = document.getElementById('filtYear');
+            const prevG = gSel.value;
+            const prevY = ySel.value;
+
+            gSel.innerHTML = '<option value="">Todos los Géneros</option>' + [...genres].sort().map(g => `<option value="${g}">${g}</option>`).join('');
+            ySel.innerHTML = '<option value="">Todos los Años</option>' + [...years].sort((a,b)=>b-a).map(y => `<option value="${y}">${y}</option>`).join('');
+
+            if([...genres].includes(prevG)) gSel.value = prevG;
+            if([...years].includes(prevY)) ySel.value = prevY;
         }
 
         function render() {
@@ -412,13 +517,12 @@
             if(search) {
                 filtered = filtered.filter(m => 
                     m.title.toLowerCase().includes(search) || 
-                    m.meta.toLowerCase().includes(search) || 
-                    (m.rawName && m.rawName.toLowerCase().includes(search))
+                    m.meta.toLowerCase().includes(search)
                 );
             }
 
             if(filtered.length === 0) {
-                grid.innerHTML = '<div class="empty-state">No se encontraron medios con estos filtros.</div>';
+                grid.innerHTML = '<div class="empty-state">No se encontraron títulos en tu catálogo. Añadí uno arriba.</div>';
                 return;
             }
 
@@ -457,7 +561,7 @@
         window.onload = function() {
             populateTaxonomies();
             render();
-            setTimeout(() => { autoPullFromCloud(); }, 100);
+            setTimeout(() => { autoPullFromCloud(); }, 150);
         };
 
         document.addEventListener("visibilitychange", async () => {
