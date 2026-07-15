@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>CinePulse v1.1</title>
+    <title>CinePulse v1.2</title>
     <link class="apple-touch-icon" href="https://fav.farm/🎬">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -36,7 +36,11 @@
         h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; display: flex; align-items: center; gap: 0.4rem; }
         .version-badge { font-size: 0.68rem; font-weight: 600; color: var(--label3); background: var(--surface2); padding: 0.1rem 0.35rem; border-radius: 5px; border: 1px solid var(--surface3); }
         
-        .top-buttons { display: flex; gap: 0.4rem; }
+        .top-controls { display: flex; align-items: center; gap: 0.4rem; }
+        .user-selector { background: var(--surface2); border-radius: 10px; padding: 2px; display: flex; border: 1px solid var(--surface3); }
+        .user-btn { background: transparent; border: none; color: var(--label2); padding: 0.35rem 0.65rem; border-radius: 8px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: background 0.15s, color 0.15s; }
+        .user-btn.active { background: var(--surface3); color: var(--label); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+
         .btn-cloud-sync { background: var(--surface2); border: 1px solid var(--surface3); color: white; width: 38px; height: 34px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
         .btn-cloud-sync.spinning { animation: spin 0.8s linear infinite; color: var(--accent); }
 
@@ -92,7 +96,7 @@
         .btn-action.del { color: var(--red); }
 
         .empty-state { grid-column: 1/-1; text-align: center; color: var(--label3); padding: 3rem 1rem; font-size: 0.88rem; }
-        .settings-footer { margin-top: 2.5rem; text-align: center; padding-bottom: 1.5rem; }
+        .settings-footer { margin-top: 2.5rem; text-align: center; padding-bottom: 1.5rem; display: flex; flex-direction: column; gap: 0.4rem; align-items: center; }
         .btn-settings-link { background: transparent; border: none; color: var(--label3); font-size: 0.75rem; text-decoration: underline; cursor: pointer; }
         
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -102,10 +106,14 @@
     <div class="container">
         <header>
             <div>
-                <h1>CinePulse <span class="version-badge">v1.1</span></h1>
-                <div class="subtitle" style="font-size:0.78rem; color:var(--label2);">Catálogo local offline con motor de consulta OMDb API</div>
+                <h1>CinePulse <span class="version-badge">v1.2</span></h1>
+                <div class="subtitle" style="font-size:0.78rem; color:var(--label2);">Catálogo cross-dispositivo con control de marcas de tiempo</div>
             </div>
-            <div class="top-buttons">
+            <div class="top-controls">
+                <div class="user-selector">
+                    <button class="user-btn" id="btnUser1" onclick="switchUser('Mariano')">Mariano</button>
+                    <button class="user-btn" id="btnUser2" onclick="switchUser('Bere')">Bere</button>
+                </div>
                 <button class="btn-cloud-sync" id="btnCloudSync" onclick="manualSync()" title="Sincronizar con GitHub">🔄</button>
             </div>
         </header>
@@ -184,14 +192,16 @@
         <div class="catalog-grid" id="catalogGrid"></div>
 
         <div class="settings-footer">
-            <button class="btn-settings-link" onclick="setupOMDbKey()">⚙️ Configurar OMDb API Key / Credentials</button>
+            <button class="btn-settings-link" onclick="setupOMDbKey()">⚙️ Configurar OMDb API Key</button>
+            <button class="btn-settings-link" style="color:var(--label3);" onclick="forceSetupCredentials()">⚙️ Reconfigurar Credenciales GitHub Gist</button>
         </div>
     </div>
 
     <script>
+        let currentUser = localStorage.getItem('cinepulse_current_user') || 'Mariano';
         let currentContext = 'all';
         let isSyncingLock = false;
-        let isFreshInstall = !localStorage.getItem('cinepulse_state_v1');
+        let isFreshInstall = !localStorage.getItem(`cinepulse_state_${currentUser}`);
 
         /* 💾 SEED INICIAL ESTRUCTURADO CON LOS RELEASES REALES DE TU DISCO */
         const DEFAULT_CATALOG = [
@@ -202,7 +212,7 @@
             { id: "v5", title: "Night Always Comes", year: "2025", rating: "8.0", category: "milo", meta: "Drama", plot: "Una mujer intenta conseguir dinero a contrarreloj en las noches de Portland.", poster: "", rawName: "Night.Always.Comes.2025.2160p.4K.WEB.x265" }
         ];
 
-        let state = JSON.parse(localStorage.getItem('cinepulse_state_v1')) || {
+        let state = JSON.parse(localStorage.getItem(`cinepulse_state_${currentUser}`)) || {
             updatedAt: 1,
             movies: DEFAULT_CATALOG
         };
@@ -221,7 +231,6 @@
         function getOMDbKey() {
             let key = localStorage.getItem('cinepulse_omdb_key');
             if(!key || key.trim() === '') {
-                // Key demostración por defecto si no configuró una propia todavía
                 key = "tt77462"; 
             }
             return key;
@@ -233,14 +242,47 @@
             if(newKey !== null) {
                 localStorage.setItem('cinepulse_omdb_key', newKey.trim());
                 alert("Clave de OMDb guardada con éxito.");
+                render();
             }
         }
 
+        function forceSetupCredentials() {
+            const token = prompt("Ingresá tu GitHub Token (PAT):", localStorage.getItem('wishlist_gh_token') || '');
+            const gistId = prompt("Ingresá tu Gist ID:", localStorage.getItem('wishlist_gh_gist') || '');
+            if(token && gistId) {
+                localStorage.setItem('wishlist_gh_token', token.trim());
+                localStorage.setItem('wishlist_gh_gist', gistId.trim());
+                manualSync();
+            }
+        }
+
+        /* 📡 LOGICA DE GUARDADO ASÍNCRONA OFFLINE-FIRST SECUENCIAL v1.2 */
         async function save() {
             state.updatedAt = Date.now();
-            localStorage.setItem('cinepulse_state_v1', JSON.stringify(state));
+            localStorage.setItem(`cinepulse_state_${currentUser}`, JSON.stringify(state));
             render();
             await autoPushToCloud();
+        }
+
+        async function switchUser(user) {
+            currentUser = user;
+            localStorage.setItem('cinepulse_current_user', currentUser);
+            
+            state = JSON.parse(localStorage.getItem(`cinepulse_state_${currentUser}`)) || {
+                updatedAt: 1,
+                movies: []
+            };
+            if(!state.updatedAt) state.updatedAt = 1;
+            
+            isFreshInstall = (state.movies.length === 0);
+            updateUserSelectorUI();
+            render();
+            await autoPullFromCloud();
+        }
+
+        function updateUserSelectorUI() {
+            document.getElementById('btnUser1').classList.toggle('active', currentUser === 'Mariano');
+            document.getElementById('btnUser2').classList.toggle('active', currentUser === 'Bere');
         }
 
         function setFilterContext(ctx) {
@@ -254,14 +296,12 @@
             document.getElementById('formCard').classList.toggle('open');
         }
 
-        /* 🧹 FILTRO LIMPIADOR DE RELEASES DE SCENE (REGEX ATÓMICO) */
         function cleanReleaseName(raw) {
             let name = raw.replace(/\.(2160p|1080p|4k|bluray|x264|x265|web|hdr|aac5\.1|10bit|webdl|h265|ita|eng|yts|brrip|hdrip|dvdrip|graces).*/ai, '');
             name = name.replace(/[._\-]/g, ' ').trim();
             return name;
         }
 
-        /* 🚀 SCRAPER ESTRUCTURADO ASÍNCRONO DIRECTO CONTRA LA API DE OMDB */
         async function runOMDbScraper() {
             const raw = document.getElementById('fRawName').value.trim();
             if(!raw) return;
@@ -273,7 +313,6 @@
             const cleanedTitle = cleanReleaseName(raw);
             document.getElementById('fTitle').value = cleanedTitle;
 
-            // Enrutamiento predictivo de fólders según el archivo
             if(raw.toLowerCase().includes('milo')) document.getElementById('fCategory').value = 'milo';
             else if(raw.toLowerCase().includes('bere')) document.getElementById('fCategory').value = 'bere';
             else if(raw.toLowerCase().includes('series')) document.getElementById('fCategory').value = 'series';
@@ -285,7 +324,6 @@
             const apiKey = getOMDbKey();
 
             try {
-                // Llamada directa HTTP GET estructurada
                 const targetUrl = `https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(cleanedTitle)}${yearParam}&plot=full`;
                 const res = await fetch(targetUrl);
                 const data = await res.json();
@@ -299,11 +337,9 @@
                     }
                     if(data.Poster && data.Poster !== "N/A") document.getElementById('fPoster').value = data.Poster;
                     if(data.Plot && data.Plot !== "N/A") document.getElementById('fPlot').value = data.Plot;
-                } else {
-                    console.log("No encontrado en OMDb, se puede rellenar offline.");
                 }
             } catch(e) {
-                console.error("Fallo de red o API key inválida. Fallback offline habilitado.");
+                console.error("OMDb offline or error token fallback.");
             } finally {
                 btn.disabled = false;
                 btn.textContent = "Consultando OMDb";
@@ -324,7 +360,6 @@
 
             state.movies.unshift({ id: 'v_' + Date.now(), title, category, year, rating, meta, poster, plot, rawName });
             
-            // Reset formulario
             document.getElementById('fTitle').value = '';
             document.getElementById('fYear').value = '';
             document.getElementById('fRating').value = '';
@@ -358,25 +393,33 @@
             }
         }
 
+        /* 📡 COLA MULTI-DISPOSITIVO SEGMENTADA POR USUARIO EN EL GIST v1.2 */
         async function autoPullFromCloud(isForcedManual = false) {
             if(isSyncingLock && !isForcedManual) return;
             const creds = getSyncCredentials();
             if(!creds.token || !creds.gistId) return;
+
+            const syncUser = currentUser;
             const syncBtn = document.getElementById('btnCloudSync');
             if(syncBtn) syncBtn.classList.add('spinning');
+
+            const fileName = `movies_${currentUser.toLowerCase()}.json`;
+
             try {
                 const res = await fetch(`https://api.github.com/gists/${creds.gistId}?_cb=${Date.now()}`, {
                     headers: { 'Authorization': `token ${creds.token}` }
                 });
                 if(res.ok) {
                     const gistData = await res.json();
-                    if(gistData.files && gistData.files["movie_catalog.json"]) {
-                        const cloudContent = JSON.parse(gistData.files["movie_catalog.json"].content);
+                    if(gistData.files && gistData.files[fileName]) {
+                        const cloudContent = JSON.parse(gistData.files[fileName].content);
                         const cloudUpdatedAt = cloudContent.updatedAt || 0;
                         
+                        if (syncUser !== currentUser) return;
+
                         if(cloudUpdatedAt > state.updatedAt || isForcedManual || (isFreshInstall && cloudContent.movies)) {
                             state = cloudContent;
-                            localStorage.setItem('cinepulse_state_v1', JSON.stringify(state));
+                            localStorage.setItem(`cinepulse_state_${currentUser}`, JSON.stringify(state));
                             isFreshInstall = false;
                             render();
                         } else if(state.updatedAt > cloudUpdatedAt) {
@@ -385,8 +428,8 @@
                     }
                 }
             } catch(e) { 
-                console.log("Modo Offline de Vacaciones: Consumiendo LocalStorage blindado."); 
-            } finally { if(syncBtn) syncBtn.classList.remove('spinning'); }
+                console.log("Offline mode active: Utilizando LocalStorage aislado."); 
+            } finally { if(syncBtn) syncBtn.github = null; if(syncBtn) syncBtn.classList.remove('spinning'); }
         }
 
         async function autoPushToCloud(bypassLock = false) {
@@ -394,18 +437,22 @@
             const creds = getSyncCredentials();
             if(!creds.token || !creds.gistId) return;
             isSyncingLock = true;
+            
             const syncBtn = document.getElementById('btnCloudSync');
             if(syncBtn) syncBtn.classList.add('spinning');
+
+            const fileName = `movies_${currentUser.toLowerCase()}.json`;
+            const filePayload = {};
+            filePayload[fileName] = { content: JSON.stringify(state, null, 2) };
+
             try {
                 await fetch(`https://api.github.com/gists/${creds.gistId}`, {
                     method: 'PATCH',
                     headers: { 'Authorization': `token ${creds.token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        files: { "movie_catalog.json": { content: JSON.stringify(state, null, 2) } }
-                    })
+                    body: JSON.stringify({ files: filePayload })
                 });
             } catch(e) { 
-                console.log("Fallo de push mitigado.");
+                console.log("Push de contingencia amortiguado.");
             } finally { isSyncingLock = false; if(syncBtn) syncBtn.classList.remove('spinning'); }
         }
 
@@ -439,7 +486,6 @@
                 const card = document.createElement('div');
                 card.className = 'movie-card';
                 
-                // Fallback elegante en CSS si no hay póster disponible offline
                 const posterStyle = m.poster ? '' : 'style="display:flex;align-items:center;justify-content:center;background:#2c2c2e;height:100%;font-size:2.5rem;"';
                 const posterHtml = m.poster 
                     ? `<img src="${m.poster}" class="poster-img" alt="Poster" onerror="this.style.display='none'; this.parentElement.innerHTML='🎬';">`
@@ -466,6 +512,7 @@
         }
 
         window.onload = function() {
+            updateUserSelectorUI();
             render();
             setTimeout(() => {
                 autoPullFromCloud();
