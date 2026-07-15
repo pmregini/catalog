@@ -23,7 +23,7 @@
         .btn-panel { background: var(--surface2); border: 1px solid var(--surface3); color: white; padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.82rem; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; }
         .btn-panel.spinning { animation: spin 1s linear infinite; opacity: 0.6; pointer-events: none; }
 
-        .filter-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.4rem; margin-bottom: 0.6rem; }
+        .filter-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.4rem; margin-bottom: 0.6rem; }
         .filter-panel select { background: var(--surface); border: 1px solid var(--surface2); padding: 0.55rem; border-radius: 8px; color: white; font-size: 0.78rem; outline: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2398989d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 6l4 4 4-4'/></svg>"); background-repeat: no-repeat; background-position: right 8px center; padding-right: 24px;}
 
         .search-row { display: flex; gap: 0.4rem; margin-bottom: 0.8rem; flex-wrap: wrap;}
@@ -118,9 +118,13 @@
                         <div class="omdb-results-box" id="omdbResults"></div>
                     </div>
 
-                    <div class="row-inputs">
+                    <div class="row-inputs" style="grid-template-columns: 1fr 1fr 1fr;">
                         <div class="form-group">
-                            <label>Ubicación (Directorio)</label>
+                            <label>Disco Físico</label>
+                            <input type="text" id="fDisk" value="Adata" placeholder="Ej: Adata">
+                        </div>
+                        <div class="form-group">
+                            <label>Ubicación</label>
                             <select id="fCategory">
                                 <option value="all">Raíz</option>
                                 <option value="bere">Bere</option>
@@ -189,13 +193,14 @@
         <div class="filter-panel">
             <select id="filtShortlist" onchange="render()" style="color: var(--accent); font-weight: bold;">
                 <option value="">Todas las Pelis/Series</option>
-                <option value="true">📌 Próximas a Ver (Shortlist)</option>
+                <option value="true">📌 Próximas a Ver</option>
             </select>
             <select id="filtWatched" onchange="render()">
                 <option value="">Vista / No Vista</option>
                 <option value="false">👀 No Vistas</option>
                 <option value="true">✅ Vistas</option>
             </select>
+            <select id="filtDisk" onchange="render()"><option value="">Cualquier Disco</option></select>
             <select id="filtLocation" onchange="render()">
                 <option value="">Cualquier Directorio</option>
                 <option value="all">Raíz</option>
@@ -214,8 +219,8 @@
         <div class="catalog-grid" id="catalogGrid"></div>
 
         <div class="footer">
-            <button class="btn-panel scan" style="margin:0 auto; background: var(--surface2); border-color: var(--surface3); display: none;" id="btnScan" onclick="document.getElementById('directoryInput').click()">📁 Scan Directorio</button>
-            <input type="file" id="directoryInput" webkitdirectory directory multiple onchange="handleDirectorySelection(event)">
+            <button class="btn-panel scan" style="margin:0 auto; background: var(--surface2); border-color: var(--surface3);" id="btnScan" onclick="triggerDirectoryScan()">📁 Scan Directorio (Automático)</button>
+            <input type="file" id="directoryInput" webkitdirectory directory multiple onchange="handleDirectorySelection(event)" style="display: none;">
             
             <button class="btn-footer" style="margin-top:0.5rem;" onclick="setupOMDbKey()">⚙️ Configurar OMDb API Key</button>
             <button class="btn-footer" onclick="forceSetupCredentials()">⚙️ Configurar GitHub Gist (Sync)</button>
@@ -269,6 +274,132 @@
             populateTaxonomies();
             render();
             await autoPushToCloud();
+        }
+
+        // ==========================================
+        // SCAN DIRECTORIO AUTO
+        // ==========================================
+        let scanTargetDisk = "Adata";
+
+        function triggerDirectoryScan() {
+            const d = prompt("¿A qué Disco Físico pertenecen estos archivos?", "Adata");
+            if (d !== null) {
+                scanTargetDisk = d.trim() || "Adata";
+                document.getElementById('directoryInput').click();
+            }
+        }
+
+        function cleanReleaseName(filename) {
+            let name = filename.replace(/\.[^/.]+$/, "");
+            name = name.replace(/\.(2160p|1080p|720p|4k|bluray|x264|x265|web|webdl|webrip|hdr|hevc|aac5\.1|10bit|h265|ita|eng|yts|brrip|hdrip|dvdrip|graces|cyber|turko|oft|mx|bz|gg|world|trial).*/i, '');
+            name = name.replace(/\b(19|20)\d{2}\b/g, '');
+            name = name.replace(/[._\-]/g, ' ').replace(/\s+/g, ' ').trim();
+            return name;
+        }
+
+        async function handleDirectorySelection(event) {
+            const files = event.target.files;
+            if(!files || files.length === 0) return;
+
+            const apiKey = getOMDbKey();
+            if(!apiKey) alert("Sin API Key. Se leerán los nombres pero sin metadata.");
+
+            const btn = document.getElementById('btnScan');
+            btn.classList.add('spinning');
+            btn.textContent = "...";
+
+            const validExtensions = ['.mkv', '.mp4', '.avi', '.mov'];
+            const currentMoviesMap = { ...state.movies.reduce((acc, m) => ({ ...acc, [m.rawName]: m }), {}) };
+            const detectedMovies = [];
+
+            for(let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const relativePath = file.webkitRelativePath || file.name;
+                const lowerPath = relativePath.toLowerCase();
+
+                if(!validExtensions.some(ext => lowerPath.endsWith(ext))) continue;
+
+                const rawName = file.name.replace(/\.[^/.]+$/, "");
+
+                let category = 'all';
+                if(lowerPath.includes('/bere/')) category = 'bere';
+                else if(lowerPath.includes('/milo/')) category = 'milo';
+                else if(lowerPath.includes('/series/')) category = 'series';
+                
+                let defaultType = category === 'series' ? 'Serie' : 'Película';
+
+                if(currentMoviesMap[rawName]) {
+                    let existingMovie = currentMoviesMap[rawName];
+                    existingMovie.category = category;
+                    existingMovie.type = existingMovie.type || defaultType;
+                    existingMovie.disk = existingMovie.disk || scanTargetDisk;
+
+                    if (apiKey && (existingMovie.plot === FALLBACK_PLOT || existingMovie.rating === "0.0" || existingMovie.rating === "")) {
+                        const cleanedTitle = cleanReleaseName(file.name);
+                        const yearMatch = file.name.match(/\b(19|20)\d{2}\b/);
+                        const yearParam = yearMatch ? `&y=${yearMatch[0]}` : '';
+
+                        try {
+                            await new Promise(r => setTimeout(r, 250));
+                            const res = await fetch(`https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(cleanedTitle)}${yearParam}&plot=full`);
+                            const data = await res.json();
+                            if(data && data.Response === "True") {
+                                const rawActors = data.Actors ? data.Actors.split(',') : [];
+                                existingMovie.imdbID = data.imdbID || existingMovie.imdbID;
+                                existingMovie.title = data.Title || existingMovie.title;
+                                existingMovie.year = data.Year || existingMovie.year;
+                                existingMovie.rating = data.imdbRating !== "N/A" ? data.imdbRating : "0.0";
+                                existingMovie.meta = `${data.Genre || 'Varios'} · ${rawActors.slice(0,3).map(a=>a.trim()).join(', ')}`;
+                                existingMovie.poster = data.Poster !== "N/A" ? data.Poster : "";
+                                existingMovie.plot = data.Plot !== "N/A" ? data.Plot : existingMovie.plot;
+                                existingMovie.type = data.Type === "series" ? "Serie" : "Película";
+                            }
+                        } catch(err) { console.log("Fallo red re-scrape"); }
+                    }
+                    detectedMovies.push(existingMovie);
+                    continue;
+                }
+
+                const cleanedTitle = cleanReleaseName(file.name);
+                const yearMatch = file.name.match(/\b(19|20)\d{2}\b/);
+                const yearParam = yearMatch ? `&y=${yearMatch[0]}` : '';
+
+                let movieEntry = {
+                    id: 'v_' + Date.now() + '_' + i,
+                    imdbID: '', title: cleanedTitle, year: yearMatch ? yearMatch[0] : "N/A",
+                    rating: "0.0", category: category, type: defaultType, disk: scanTargetDisk,
+                    meta: "Desconocido", poster: "", plot: FALLBACK_PLOT, rawName: rawName,
+                    watched: false, shortlisted: false
+                };
+
+                if(apiKey) {
+                    try {
+                        await new Promise(r => setTimeout(r, 250));
+                        const res = await fetch(`https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(cleanedTitle)}${yearParam}&plot=full`);
+                        const data = await res.json();
+                        if(data && data.Response === "True") {
+                            const rawActors = data.Actors ? data.Actors.split(',') : [];
+                            movieEntry.imdbID = data.imdbID || "";
+                            movieEntry.title = data.Title || movieEntry.title;
+                            movieEntry.year = data.Year || movieEntry.year;
+                            movieEntry.rating = data.imdbRating !== "N/A" ? data.imdbRating : "0.0";
+                            movieEntry.meta = `${data.Genre || 'Varios'} · ${rawActors.slice(0,3).map(a=>a.trim()).join(', ')}`;
+                            movieEntry.poster = data.Poster !== "N/A" ? data.Poster : "";
+                            movieEntry.plot = data.Plot !== "N/A" ? data.Plot : movieEntry.plot;
+                            movieEntry.type = data.Type === "series" ? "Serie" : "Película";
+                        }
+                    } catch(err) {}
+                }
+                detectedMovies.push(movieEntry);
+            }
+
+            state.movies = detectedMovies;
+            await save();
+
+            document.getElementById('directoryInput').value = '';
+            btn.classList.remove('spinning');
+            btn.textContent = "📁 Scan Directorio (Automático)";
+            alert(`Directorio procesado. ${detectedMovies.length} archivos en disco "${scanTargetDisk}".`);
         }
 
         // ==========================================
@@ -390,6 +521,7 @@
 
             const category = document.getElementById('fCategory').value;
             const type = document.getElementById('fType').value;
+            const disk = document.getElementById('fDisk').value.trim() || "Adata";
             
             let seriesDefaultInfo = "";
             if (type === "Serie" && window.tempSeriesTotalSeasons) {
@@ -405,6 +537,7 @@
                 rating: document.getElementById('fRating').value.trim() || "0.0",
                 category: category,
                 type: type,
+                disk: disk,
                 meta: document.getElementById('fMeta').value.trim() || "Desconocido",
                 poster: document.getElementById('fPoster').value.trim(),
                 plot: document.getElementById('fPlot').value.trim() || "Sin sinopsis cargada.",
@@ -417,14 +550,13 @@
             state.movies.unshift(newMovie);
             await save();
 
-            // Limpieza silenciosa sin contraer el formulario
+            // Limpieza silenciosa sin cerrar modal
             document.getElementById('fImdbID').value = "";
             document.getElementById('fTitle').value = ""; document.getElementById('fYear').value = "";
             document.getElementById('fRating').value = ""; document.getElementById('fMeta').value = "";
             document.getElementById('fPoster').value = ""; document.getElementById('fPlot').value = "";
             document.getElementById('omdbSearchInput').value = ""; document.getElementById('omdbResults').style.display = "none";
             
-            // Foco en el buscador para añadir la siguiente película rápidamente
             document.getElementById('omdbSearchInput').focus();
         }
 
@@ -460,9 +592,11 @@
             const m = state.movies.find(m => m.id === id);
             if(!m) return;
             const t = prompt("Modificar Título:", m.title);
+            const d = prompt("Modificar Disco Físico (Adata, Expansion, etc):", m.disk || "Adata");
             const r = prompt("Modificar Rating (IMDb):", m.rating);
-            if(t !== null && r !== null) {
+            if(t !== null && r !== null && d !== null) {
                 m.title = t.trim() || m.title;
+                m.disk = d.trim() || m.disk;
                 m.rating = r.trim() || m.rating;
                 await save();
             }
@@ -552,7 +686,9 @@
 
         function populateTaxonomies() {
             const genres = new Set();
+            const disks = new Set();
             state.movies.forEach(m => {
+                if(m.disk) disks.add(m.disk.trim());
                 if(m.meta && m.meta !== "Desconocido") {
                     const genreChunk = m.meta.split('·')[0];
                     genreChunk.split(',').forEach(g => {
@@ -565,6 +701,11 @@
             const prevG = gSel.value;
             gSel.innerHTML = '<option value="">Cualquier Género</option>' + [...genres].sort().map(g => `<option value="${g}">${g}</option>`).join('');
             if([...genres].includes(prevG)) gSel.value = prevG;
+
+            const dSel = document.getElementById('filtDisk');
+            const prevD = dSel.value;
+            dSel.innerHTML = '<option value="">Cualquier Disco</option>' + [...disks].sort().map(d => `<option value="${d}">💾 ${d}</option>`).join('');
+            if([...disks].includes(prevD)) dSel.value = prevD;
         }
 
         function render() {
@@ -574,6 +715,7 @@
             
             const genre = document.getElementById('filtGenre').value;
             const location = document.getElementById('filtLocation').value;
+            const disk = document.getElementById('filtDisk').value;
             const type = document.getElementById('filtType').value;
             const watched = document.getElementById('filtWatched').value;
             const shortlist = document.getElementById('filtShortlist').value;
@@ -581,6 +723,7 @@
             grid.innerHTML = '';
             
             let filtered = state.movies.filter(m => {
+                if(disk && m.disk !== disk) return false;
                 if(location && m.category !== location) return false;
                 if(type && m.type !== type) return false;
                 if(genre && (!m.meta || !m.meta.includes(genre))) return false;
@@ -622,6 +765,7 @@
                     ? `<img src="${m.poster}" class="poster-img" alt="Poster" onerror="this.style.display='none'; this.parentElement.innerHTML='🎬';">`
                     : `🎬`;
                 
+                const diskLabel = m.disk || 'Adata';
                 const locLabel = m.category === 'all' ? 'Raíz' : m.category;
                 const typeLabel = m.type || 'Película';
 
@@ -634,7 +778,7 @@
                     <div class="poster-wrapper" ${posterStyle} onclick="window.open('${imdbLink}', '_blank')" title="Abrir en IMDb">
                         ${posterHtml}
                         ${m.shortlisted ? '<div class="shortlist-badge">📌 PRÓXIMA</div>' : ''}
-                        <div class="folder-badge">${locLabel} · ${typeLabel}</div>
+                        <div class="folder-badge">💾 ${diskLabel} · ${locLabel} · ${typeLabel}</div>
                         ${m.rating && m.rating !== "0.0" ? `<div class="rating-badge">⭐ ${m.rating}</div>` : ''}
                         ${m.watched ? '<div class="watched-badge">✅ VISTA</div>' : ''}
                     </div>
